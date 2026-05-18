@@ -1,7 +1,9 @@
 /**
- * I2C UART GPIO Interrupt Test
+ * @example{lineno} gpio_poll.ino
  *
- * As an alterantive to enabling interrupts on the Arduino this
+ * @brief I2C UART GPIO Polling Test
+ *
+ * As an alternative to enabling interrupts on the Arduino this
  * example shows how to poll the interrupt pin.
  *
  * Connect a button or switch to GPIO 0 of the UART interface module.
@@ -11,24 +13,28 @@
 
 #include <Appnostic_SC16IS752.h>
 
+int8_t powerPin = -1;
+
 Appnostic_SC16IS752 ExtSerial(SC16IS752_CHANNEL_A);
 
 #define GPIO_PIN 0
-#define NOS8007_IRQ 3
+#define SC16IS7XX_IRQ_PIN 3
+#define LED_PIN 9
 
 void setup() {
-    // enable NOS8007 power by setting the EN pin of
-    // the NOS10001 baseboard to HIGH
-    pinMode(A3, OUTPUT);
-    digitalWrite(A3, HIGH);
-    delay(100);  // let things settle
+    // power the chip if necessary
+    if (powerPin >= 0) {
+        pinMode(powerPin, OUTPUT);
+        digitalWrite(powerPin, HIGH);
+        delay(100);  // let things settle
+    }
 
     Serial.begin(115200);
     while (!Serial) delay(100);
 
-    Serial.println("NOS8007 Test");
+    Serial.println("SC16IS7XX Test");
 
-    Serial.print("Checking for NOS8007...");
+    Serial.print("Checking for the SC16IS7XX...");
     if (!ExtSerial.begin_i2c()) {
         Serial.println("not found. Please ensure that the module\r\nis plugged "
                        "in and securely fastened to the baseboard.");
@@ -45,12 +51,11 @@ void setup() {
     // enable the interrupt controller
     ExtSerial.enableInterruptControl(true);
 
-    // enable LED2 on the NOS10001 baseboard
-    pinMode(9, OUTPUT);
+    pinMode(LED_PIN, OUTPUT);
 }
 
 void loop() {
-    if (digitalRead(NOS8007_IRQ) == LOW) {
+    if (digitalRead(SC16IS7XX_IRQ_PIN) == LOW) {
         if (ExtSerial.isr() == SC16IS7XX_INT_GPIO) {
             digitalWrite(9, !ExtSerial.digitalRead(GPIO_PIN));
         }

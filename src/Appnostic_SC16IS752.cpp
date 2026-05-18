@@ -1,6 +1,5 @@
 /**
- * This is an Arduino library for the NOS8007 based on the
- * SC16IS752 dual UART from NXP.
+ * This is an Arduino library for the SC16IS7XX dual UART chips from NXP.
  *
  * It is possible that this library may work with other vendor
  * devices using I2C or SPI but its primary purpose is for
@@ -9,8 +8,8 @@
  * priority.
  *
  * Credits:
- * @SandboxElectronics for most of the code
- * @TD-er for the SC16IS752 patches
+ * \@SandboxElectronics for most of the code
+ * \@TD-er for the SC16IS752 patches
  *
  * Made with love by the Appnostic team!
  */
@@ -26,12 +25,12 @@ Appnostic_SC16IS752::Appnostic_SC16IS752(uint8_t channel) {
 }
 
 /**
- * @brief   slight modification of the register write function to
- *          allow for the separate channels of the SC16IS752
- * @note    uses Appnostic_SC16IS7XX::writeRegister
+ * @brief slight modification of the register write function to allow for the
+ * separate channels of the SC16IS752
+ * @note uses Appnostic_SC16IS7XX::writeRegister
  * @param channel 0 or 1
- * @param reg_addr
- * @param val
+ * @param reg_addr the register address to write to
+ * @param val the value to write to the register
  */
 void Appnostic_SC16IS752::writeRegister(uint8_t channel, uint8_t reg_addr,
                                         uint8_t val) {
@@ -39,12 +38,12 @@ void Appnostic_SC16IS752::writeRegister(uint8_t channel, uint8_t reg_addr,
 }
 
 /**
- * @brief   slight modification of the register read function to
- *          allow for the separate channels of the SC16IS752
- * @note    uses Appnostic_SC16IS7XX::readRegister
- * @param channel
- * @param reg_addr
- * @return
+ * @brief slight modification of the register read function to allow for the
+ * separate channels of the SC16IS752
+ * @note uses Appnostic_SC16IS7XX::readRegister
+ * @param channel 0 or 1
+ * @param reg_addr the register address to read from
+ * @return the value read from the register
  */
 uint8_t Appnostic_SC16IS752::readRegister(uint8_t channel, uint8_t reg_addr) {
     return Appnostic_SC16IS7XX::readRegister((reg_addr << 3 | channel << 1));
@@ -54,7 +53,7 @@ uint8_t Appnostic_SC16IS752::readRegister(uint8_t channel, uint8_t reg_addr) {
 
 /**
  * @brief tests the device to check if it is online
- * @return
+ * @return true if the device is online, false otherwise
  */
 bool Appnostic_SC16IS752::ping() {
     writeRegister(SC16IS752_CHANNEL_A, SC16IS7XX_REG_SPR, 0x55);
@@ -88,7 +87,7 @@ bool Appnostic_SC16IS752::ping() {
 
 /**
  * @brief enables fifo buffer
- * @param enabled
+ * @param enabled true to enable FIFO, false to disable
  */
 void Appnostic_SC16IS752::setFIFO(bool enabled) {
     settings.fifo = enabled;
@@ -108,7 +107,7 @@ void Appnostic_SC16IS752::setFIFO(bool enabled) {
 
 /**
  * @brief resets tx or rx fifo buffer
- * @param rx
+ * @param rx true to reset RX FIFO, false to reset TX FIFO
  */
 void Appnostic_SC16IS752::resetFIFO(bool rx) {
     uint8_t tmp_fcr;
@@ -152,8 +151,8 @@ void Appnostic_SC16IS752::setFIFOTriggerLevel(bool rx, uint8_t length) {
 }
 
 /**
- * @brief sets the baud rate. nos8007 has been tested to 921600
- * @param baudRate
+ * @brief sets the baud rate
+ * @param baudRate the target baud rate to set
  */
 void Appnostic_SC16IS752::setBaudrate(uint32_t baudRate) {
     settings.baud = baudRate;
@@ -185,9 +184,10 @@ void Appnostic_SC16IS752::setBaudrate(uint32_t baudRate) {
 
 /**
  * @brief sets the line parameters
- * @param bits
- * @param parity
- * @param stopBits
+ * @param bits the number of data bits (5, 6, 7, or 8)
+ * @param parity the parity mode (0: none, 1: odd, 2: even, 3: force '1', 4:
+ * force '0')
+ * @param stopBits the number of stop bits (1 or 2)
  */
 void Appnostic_SC16IS752::setLine(uint8_t bits, uint8_t parity,
                                   uint8_t stopBits) {

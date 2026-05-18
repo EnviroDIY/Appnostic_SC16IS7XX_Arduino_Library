@@ -1,46 +1,52 @@
 /**
- * I2C UART GPIO Interrupt Test
+ * @example{lineno} gpio_interrupt.ino
+ *
+ * @brief I2C UART GPIO Interrupt Test
  *
  * This example shows how to enable input on a pin and
  * configure interrupts for it. Note that the input pin
  * is active low.
  *
  * NOTE: On the Arduino Uno there are only two interrupt pins on
- * pins 2 and 3 which are not used by NOS8007.
+ * pins 2 and 3 which are not used by the SC16IS7XX.
  * On the R4 Minima all pins can support interrupts.
  *
  * Connect a button or switch to GPIO 0 of the UART interface module.
  *
  */
 
+#include <pins_arduino.h>
 #include <Appnostic_SC16IS752.h>
+
+int8_t powerPin = -1;
 
 Appnostic_SC16IS752 ExtSerial(SC16IS752_CHANNEL_A);
 
 #define GPIO_PIN 0
-#define NOS8007_IRQ 3
+#define SC16IS7XX_IRQ_PIN 3
 
 bool interrupted = false;
 
 /**
- * @brief interrupt handler for NOS8007 IRQ
+ * @brief interrupt handler for the SC16IS7XX IRQ
  */
 void onInterrupt() {
     interrupted = true;
 }
 
 void setup() {
-    // enable NOS8007 power by setting the EN pin of
-    // the NOS10001 baseboard to HIGH
-    pinMode(A3, OUTPUT);
-    digitalWrite(A3, HIGH);
-    delay(100);  // let things settle
+    // power the chip if necessary
+    if (powerPin >= 0) {
+        pinMode(powerPin, OUTPUT);
+        digitalWrite(powerPin, HIGH);
+        delay(100);  // let things settle
+    }
 
     Serial.begin(115200);
     while (!Serial) delay(100);
-    Serial.println("NOS8007 Test");
+    Serial.println("SC16IS7XX Test");
 
-    Serial.print("Checking for NOS8007...");
+    Serial.print("Checking for the SC16IS7XX...");
     if (!ExtSerial.begin_i2c()) {
         Serial.println("not found. Please ensure that the module\r\nis plugged "
                        "in and securely fastened to the baseboard.");
@@ -57,10 +63,8 @@ void setup() {
     // enable the interrupt controller
     ExtSerial.enableInterruptControl(true);
 
-    // on the NOS10001 Arduino baseboard the IRQ of the NOS8007
-    // is on pin D7
-    pinMode(NOS8007_IRQ, INPUT);  // no pull required
-    attachInterrupt(digitalPinToInterrupt(NOS8007_IRQ), onInterrupt,
+    pinMode(SC16IS7XX_IRQ_PIN, INPUT);  // no pull required
+    attachInterrupt(digitalPinToInterrupt(SC16IS7XX_IRQ_PIN), onInterrupt,
                     FALLING);  // interrupt transitions from high to low
 }
 

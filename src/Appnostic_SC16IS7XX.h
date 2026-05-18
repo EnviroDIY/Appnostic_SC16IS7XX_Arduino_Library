@@ -95,27 +95,69 @@ class Appnostic_SC16IS7XX : public Stream {
     uint32_t crystal_frequency = SC16IS7XX_XTAL_FREQ;
 
     // methods that need to be implemented by derived classes
+    /**
+     * @brief tests the device to check if it is online
+     * @return true if the device is online, false otherwise
+     */
     virtual bool ping();
     virtual void resetDevice();
 
  protected:
+    /**
+     * @brief Flag for whether the device has been initialized. Used to prevent
+     * multiple initializations in begin_i2c and begin_spi.
+     */
     static bool _initialized;
 
  public:
-    // constructor
+    /**
+     * @brief Construct a new Appnostic_SC16IS7XX object.
+     */
     Appnostic_SC16IS7XX() {};
+
+    /**
+     * @brief Destroy the Appnostic_SC16IS7XX object.
+     */
     ~Appnostic_SC16IS7XX() {};
 
-    // stream reading
+    /**
+     * @brief Read one byte from the stream.
+     * @return int Byte value, or -1 when no data is available.
+     */
     virtual int read();
-    virtual int available();
-    virtual int peek();
-    // virtual String readStringUntil(char teminator);
 
-    // stream writing
+    /**
+     * @brief Get number of bytes available for reading.
+     * @return int Number of bytes available.
+     */
+    virtual int available();
+
+    /**
+     * @brief Peek the next byte without consuming it.
+     * @return int Next byte value, or -1 when no data is available.
+     */
+    virtual int peek();
+    // virtual String readStringUntil(char terminator);
+
+    /**
+     * @brief Write a single byte to the stream.
+     * @param val Byte value to write.
+     * @return size_t Number of bytes written.
+     */
     virtual size_t write(uint8_t val);
+
+    /**
+     * @brief Write multiple bytes to the stream.
+     * @param buf Pointer to source buffer.
+     * @param size Number of bytes to write.
+     * @return size_t Number of bytes written.
+     */
     virtual size_t write(const uint8_t* buf, size_t size);
     using Print::write;  // write(str) and write(buf, size)
+
+    /**
+     * @brief Block until transmit operations are complete.
+     */
     virtual void flush();
 
     // i2c

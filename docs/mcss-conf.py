@@ -9,6 +9,20 @@ LINKS_NAVBAR1 = [
             ('<a href="change_log.html">ChangeLog</a>',),
         ],
     ),
+    (
+        "Examples",
+        "page_the_examples",
+        [
+            (
+                '<a href="example_basic_i2c_receive.html">Simple I2C UART receive test</a>',
+            ),
+            ('<a href="example_basic_i2c_send.html">Simple I2C UART send test</a>',),
+            ('<a href="example_gpio_blink.html">Simple GPIO blink test</a>',),
+            ('<a href="example_gpio_interrupt.html">Simple GPIO interrupt test</a>',),
+            ('<a href="example_gpio_poll.html">Simple GPIO polling test</a>',),
+            ('<a href="example_i2c_loopback.html">Simple I2C UART loopback test</a>',),
+        ],
+    ),
 ]
 LINKS_NAVBAR2 = []
 VERSION_LABELS = True

@@ -1,6 +1,6 @@
 /**
- * This is an Arduino library for the NOS8007 based on the
- * SC16IS752 dual UART from NXP.
+ * This is an Arduino library for the SC16IS7XX based on the
+ * SC16IS752 dual UART chip from NXP.
  *
  * It is possible that this library may work with other vendor
  * devices using I2C or SPI but its primary purpose is for
@@ -9,8 +9,8 @@
  * priority.
  *
  * Credits:
- * @SandboxElectronics for most of the code
- * @TD-er for the SC16IS752 patches
+ * \@SandboxElectronics for most of the code
+ * \@TD-er for the SC16IS752 patches
  *
  * Made with love by the Appnostic team!
  */
@@ -20,7 +20,7 @@
 #ifdef __AVR__
 #define WIRE Wire
 #define SPI_SS PIN_SPI_SS
-#elif defined(ARDUINO_MINIMA)  // nos8007 minima r4 support
+#elif defined(ARDUINO_MINIMA)  // SC16IS7XX minima r4 support
 #define WIRE Wire
 #define SPI_SS PIN_SPI_CS
 #elif defined(ESP8266) || defined(ESP32)  // ESP8266/ESP32
@@ -40,9 +40,8 @@ bool Appnostic_SC16IS7XX::_initialized = false;
 
 /**
  * @brief writes to the register of the device via i2c or spi
- * @param channel
- * @param reg_addr
- * @param val
+ * @param reg_addr the address of the register to write to
+ * @param val the value to write to the register
  */
 void Appnostic_SC16IS7XX::writeRegister(uint8_t reg_addr, uint8_t val) {
     if (device_protocol == SC16IS7XX_PROTOCOL_I2C) {
@@ -62,9 +61,8 @@ void Appnostic_SC16IS7XX::writeRegister(uint8_t reg_addr, uint8_t val) {
 
 /**
  * @brief reads a register from the device via i2c or spi
- * @param channel
- * @param reg_addr
- * @return
+ * @param reg_addr the address of the register to write to
+ * @return the value read from the register
  */
 uint8_t Appnostic_SC16IS7XX::readRegister(uint8_t reg_addr) {
     uint8_t result = 0;
@@ -90,9 +88,12 @@ uint8_t Appnostic_SC16IS7XX::readRegister(uint8_t reg_addr) {
 /*** CONFIG *******************************************************/
 
 /**
- * @brief sets the crystal frequency in hertz. nos8007 has a 14.7456MHz XTAL
- * @note not normally called for nos8007. defaults to 147456000 (Hz)
- * @param frequency
+ * @brief sets the crystal frequency in hertz.
+ * @note Defaults to 147456000 (Hz).  A 14.7456MHz crystal is commonly used with
+ * the SC16IS7XX family and is the default for this library, but other
+ * frequencies may be used. The crystal frequency is used to calculate baud
+ * rates and should be set correctly for accurate baud rates.
+ * @param frequency the frequency of the crystal in hertz
  */
 void Appnostic_SC16IS7XX::setCrystalFrequency(uint32_t frequency) {
     crystal_frequency = frequency;
@@ -100,7 +101,7 @@ void Appnostic_SC16IS7XX::setCrystalFrequency(uint32_t frequency) {
 
 /**
  * @brief gets the xtal frequency in hertz.
- * @return
+ * @return the frequency of the crystal in hertz
  */
 uint32_t Appnostic_SC16IS7XX::getCrystalFrequency() {
     return crystal_frequency;
@@ -123,8 +124,11 @@ void Appnostic_SC16IS7XX::resetDevice() {
 
 /**
  * @brief begins an i2c session for the target address
- * @param addr
- * @return
+ * @param addr the i2c address of the device. If the address is between 0x48 and
+ * 0x57, it is used directly. Otherwise, it is right shifted by one bit and used
+ * as the address. This allows for both 7-bit and 8-bit address formats to be
+ * used.
+ * @return true if the device was successfully initialized, false otherwise
  */
 bool Appnostic_SC16IS7XX::begin_i2c(uint8_t addr) {
     if ((addr >= 0x48) && (addr <= 0x57)) {
@@ -147,8 +151,8 @@ bool Appnostic_SC16IS7XX::begin_i2c(uint8_t addr) {
 }
 
 /**
- * @brief shorthand method to start i2c as nos8007 default address
- * @return
+ * @brief shorthand method to start i2c with the SC16IS7XX default address
+ * @return true if the device was successfully initialized, false otherwise
  */
 bool Appnostic_SC16IS7XX::begin_i2c() {
     return begin_i2c(SC16IS7XX_ADDRESS_AA);
@@ -158,9 +162,9 @@ bool Appnostic_SC16IS7XX::begin_i2c() {
 
 /**
  * @brief sets up SPI
- * @note untested, but assumed working. nos8007 uses i2c
- * @param cs
- * @return
+ * @note untested, but assumed working
+ * @param cs the chip select pin to use for SPI communication
+ * @return true if the device was successfully initialized, false otherwise
  */
 bool Appnostic_SC16IS7XX::begin_spi(uint8_t cs) {
     device_protocol = SC16IS7XX_PROTOCOL_SPI;
@@ -182,7 +186,7 @@ bool Appnostic_SC16IS7XX::begin_spi(uint8_t cs) {
 
 /**
  * @brief shorthand to start spi at default CS pin
- * @return
+ * @return true if the device was successfully initialized, false otherwise
  */
 bool Appnostic_SC16IS7XX::begin_spi() {
     return begin_spi(SPI_SS);
@@ -192,8 +196,8 @@ bool Appnostic_SC16IS7XX::begin_spi() {
 
 /**
  * @brief sets the io direction of a gpio pin
- * @param pin 0 - 7
- * @param mode INPUT, OUTPUT
+ * @param pin the output pin number on the port expander (0 - 7)
+ * @param mode The pin mode, either INPUT or OUTPUT
  */
 void Appnostic_SC16IS7XX::pinMode(uint8_t pin, uint8_t mode) {
     uint8_t tmp_iodir;
@@ -211,8 +215,8 @@ void Appnostic_SC16IS7XX::pinMode(uint8_t pin, uint8_t mode) {
 
 /**
  * @brief sets the state of the gpio pin
- * @param pin 0 - 7
- * @param state 0 = LOW, 1 = HIGH
+ * @param pin the output pin number on the port expander (0 - 7)
+ * @param state the pin state, either LOW (0) or HIGH (1)
  */
 void Appnostic_SC16IS7XX::digitalWrite(uint8_t pin, uint8_t state) {
     uint8_t tmp_iostate;
@@ -230,8 +234,8 @@ void Appnostic_SC16IS7XX::digitalWrite(uint8_t pin, uint8_t state) {
 
 /**
  * @brief returns the state of a gpio pin
- * @param pin 0 - 7
- * @return 0 = LOW, 1 = HIGH
+ * @param pin the pin number on the port expander (0 - 7)
+ * @return the pin state, either LOW (0) or HIGH (1)
  */
 uint8_t Appnostic_SC16IS7XX::digitalRead(uint8_t pin) {
     uint8_t tmp_iostate;
@@ -245,15 +249,15 @@ uint8_t Appnostic_SC16IS7XX::digitalRead(uint8_t pin) {
 /**
  * @brief sets the interrupt enable register to enable interrupts
  * @note enables all six types of interrupts
- * @param enabled
+ * @param enabled true enables interrupts, false disables them
  */
 void Appnostic_SC16IS7XX::enableInterruptControl(bool enabled) {
     writeRegister(SC16IS7XX_REG_IER << 3, enabled);
 }
 
 /**
- * @brief   configures the io interrupt register to generate an interrupt
- *          on pin state change
+ * @brief configures the io interrupt register to generate an interrupt on pin
+ * state change
  * @param pin the pin to configure an interrupt on
  * @param enabled true enables the interrupt, false disables it
  */
@@ -273,8 +277,8 @@ void Appnostic_SC16IS7XX::setPinInterrupt(uint8_t pin, bool enabled) {
 
 /**
  * @brief returns the interrupt status of a pin
- * @param pin
- * @return
+ * @param pin the pin number on the port expander (0 - 7)
+ * @return the interrupt status, either LOW (0) or HIGH (1)
  */
 uint8_t Appnostic_SC16IS7XX::getPinInterrupt(uint8_t pin) {
     uint8_t tmp_iostate;
@@ -286,17 +290,19 @@ uint8_t Appnostic_SC16IS7XX::getPinInterrupt(uint8_t pin) {
 }
 
 /**
- * @brief   This will need some sort of manual tracking. Perhaps keep a record
- *          of interrupt-enabled pins and track their changes.
- * @return
+ * @brief This will need some sort of manual tracking. Perhaps keep a record of
+ * interrupt-enabled pins and track their changes.
+ * @return the last pin that triggered an interrupt, or -1 if none
  */
 int Appnostic_SC16IS7XX::getLastInterruptPin() {
     return -1;
 }
 
 /**
- * @brief   used to determine interrupt source. it should really be
- *          fleshed out better with callbacks.
+ * @brief used to determine interrupt source. it should really be fleshed out
+ * better with callbacks.
+ * @return the interrupt source as indicated by the interrupt identification
+ * register
  */
 uint8_t Appnostic_SC16IS7XX::isr() {
     uint8_t irq_src;

@@ -13,11 +13,12 @@
  * @brief UART line and FIFO settings used by Appnostic_SC16IS752.
  */
 typedef struct {
-    bool    fifo     = true;
-    bool    baud     = 115200;
-    uint8_t bits     = 8;
-    bool    parity   = false;
-    uint8_t stopBits = 1;
+    bool    fifo = true;    ///< true to enable FIFO, false to disable
+    bool    baud = 115200;  ///< baud rate to set
+    uint8_t bits = 8;       ///< number of data bits (5, 6, 7, or 8)
+    bool parity  = false;   ///< parity mode (0: none, 1: odd, 2: even, 3: force
+                            ///< '1', 4: force '0')
+    uint8_t stopBits = 1;   ///< number of stop bits (1 or 2)
 } uart_settings_t;
 
 /**

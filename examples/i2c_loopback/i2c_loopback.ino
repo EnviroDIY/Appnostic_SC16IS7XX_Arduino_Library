@@ -1,15 +1,17 @@
 /**
- * I2C UART Loopback Test
+ * @example{lineno} i2c_loopback.ino
  *
- * This is a simple loopback test between channels A and B of the NOS8007
+ * @brief I2C UART Loopback Test
+ *
+ * This is a simple loopback test between channels A and B of the SC16IS7XX
  * UART interface module.
  *
  * Connect a wire from the TXD on CHANNEL B to the RXD of CHANNEL A.
  *
  * Output:
  *
- * NOS8007 Test
- * Checking for NOS8007...found!
+ * the SC16IS7XX Test
+ * Checking for the SC16IS7XX...found!
  * Loopback data received
  * Loopback data received
  * Loopback data received
@@ -18,24 +20,27 @@
 
 #include <Appnostic_SC16IS752.h>
 
+int8_t powerPin = -1;
+
 Appnostic_SC16IS752 ExtSerialA(SC16IS752_CHANNEL_A);
 Appnostic_SC16IS752 ExtSerialB(SC16IS752_CHANNEL_B);
 
 int i = 0;
 
 void setup() {
-    // enable NOS8007 power by setting the EN pin of
-    // the NOS10001 baseboard to HIGH
-    pinMode(A3, OUTPUT);
-    digitalWrite(A3, HIGH);
-    delay(100);  // let things settle
+    // power the chip if necessary
+    if (powerPin >= 0) {
+        pinMode(powerPin, OUTPUT);
+        digitalWrite(powerPin, HIGH);
+        delay(100);  // let things settle
+    }
 
     Serial.begin(115200);
     while (!Serial) delay(100);
 
-    Serial.println("NOS8007 Test");
+    Serial.println("SC16IS7XX Test");
 
-    Serial.print("Checking for NOS8007...");
+    Serial.print("Checking for the SC16IS7XX...");
     if (!ExtSerialA.begin_i2c()) {
         Serial.println("not found. Please ensure that the module\r\nis plugged "
                        "in and securely fastened to the baseboard.");
