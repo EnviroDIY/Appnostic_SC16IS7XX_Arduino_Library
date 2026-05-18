@@ -85,6 +85,9 @@
 
 typedef enum { MODEM_PIN_GPIO_0 = 0, MODEM_PIN_GPIO_1 = 1 } modem_gpio_t;
 
+/**
+ * @brief Base driver for SC16IS7XX family devices using I2C or SPI.
+ */
 class Appnostic_SC16IS7XX : public Stream {
  private:
     uint8_t  device_protocol   = SC16IS7XX_PROTOCOL_I2C;

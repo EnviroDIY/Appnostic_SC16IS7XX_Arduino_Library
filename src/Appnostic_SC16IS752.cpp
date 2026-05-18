@@ -123,6 +123,11 @@ void Appnostic_SC16IS752::resetFIFO(bool rx) {
     writeRegister(channel, SC16IS7XX_REG_FCR, tmp_fcr);
 }
 
+/**
+ * @brief Set FIFO trigger threshold for RX or TX.
+ * @param rx True to set RX trigger threshold, false for TX.
+ * @param length Trigger threshold value.
+ */
 void Appnostic_SC16IS752::setFIFOTriggerLevel(bool rx, uint8_t length) {
     uint8_t tmp_reg;
 
@@ -228,6 +233,10 @@ void Appnostic_SC16IS752::setLine(uint8_t bits, uint8_t parity,
     writeRegister(channel, SC16IS7XX_REG_LCR, tmp_lcr);
 }
 
+/**
+ * @brief Get number of cached/available bytes in RX FIFO.
+ * @return uint8_t Number of available bytes.
+ */
 uint8_t Appnostic_SC16IS752::FIFOAvailableData() {
     if (fifo_available == 0) {
         fifo_available = readRegister(channel, SC16IS7XX_REG_RXLVL);
@@ -235,10 +244,18 @@ uint8_t Appnostic_SC16IS752::FIFOAvailableData() {
     return fifo_available;
 }
 
+/**
+ * @brief Get free space in TX FIFO.
+ * @return uint8_t Number of available TX FIFO slots.
+ */
 uint8_t Appnostic_SC16IS752::FIFOAvailableSpace() {
     return readRegister(channel, SC16IS7XX_REG_TXLVL);
 }
 
+/**
+ * @brief Read one byte from UART RX FIFO.
+ * @return int Byte value, or -1 when no data is available.
+ */
 int Appnostic_SC16IS752::read() {
     volatile uint8_t val;
 
@@ -251,10 +268,18 @@ int Appnostic_SC16IS752::read() {
     }
 }
 
+/**
+ * @brief Return number of bytes waiting in RX FIFO.
+ * @return int Number of readable bytes.
+ */
 int Appnostic_SC16IS752::available() {
     return readRegister(channel, SC16IS7XX_REG_RXLVL);
 }
 
+/**
+ * @brief Peek one byte from RX FIFO without consuming it.
+ * @return int Next byte value, or -1 when no data is available.
+ */
 int Appnostic_SC16IS752::peek() {
     if (peek_flag == 0) {
         peek_buf = read();
@@ -264,6 +289,11 @@ int Appnostic_SC16IS752::peek() {
     return peek_buf;
 }
 
+/**
+ * @brief Write one byte to UART TX register.
+ * @param val Byte to transmit.
+ * @return size_t Number of bytes written.
+ */
 size_t Appnostic_SC16IS752::write(uint8_t val) {
     uint8_t tmp_lsr;
 
@@ -276,11 +306,20 @@ size_t Appnostic_SC16IS752::write(uint8_t val) {
     return 1;
 }
 
+/**
+ * @brief Write a buffer to UART.
+ * @param buf Pointer to bytes to transmit.
+ * @param size Number of bytes to send.
+ * @return size_t Number of bytes written.
+ */
 size_t Appnostic_SC16IS752::write(const uint8_t* buf, size_t size) {
     for (int i = 0; i < size; i++) { write(buf[i]); }
     return size;
 }
 
+/**
+ * @brief Block until TX shift register is empty.
+ */
 void Appnostic_SC16IS752::flush() {
     uint8_t tmp_lsr;
 

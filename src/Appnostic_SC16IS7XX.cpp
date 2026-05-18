@@ -328,22 +328,42 @@ uint8_t Appnostic_SC16IS7XX::isr() {
     return irq_src;
 }
 
+/**
+ * @brief Write all GPIO output states at once.
+ * @param state Bitmask written to the IOSTATE register.
+ */
 void Appnostic_SC16IS7XX::setPortState(uint8_t state) {
     writeRegister(SC16IS7XX_REG_IOSTATE << 3, state);
 }
 
+/**
+ * @brief Read all GPIO states from the IOSTATE register.
+ * @return uint8_t Current GPIO state bitmask.
+ */
 uint8_t Appnostic_SC16IS7XX::getPortState() {
     return readRegister(SC16IS7XX_REG_IOSTATE << 3);
 }
 
+/**
+ * @brief Set all GPIO direction bits at once.
+ * @param mode Bitmask written to the IODIR register.
+ */
 void Appnostic_SC16IS7XX::setPortMode(uint8_t mode) {
     writeRegister(SC16IS7XX_REG_IODIR << 3, mode);
 }
 
+/**
+ * @brief Read all GPIO direction bits from the IODIR register.
+ * @return uint8_t Current GPIO direction bitmask.
+ */
 uint8_t Appnostic_SC16IS7XX::getPortMode() {
     return readRegister(SC16IS7XX_REG_IODIR << 3);
 }
 
+/**
+ * @brief Select which GPIO pin is tied to modem signaling.
+ * @param gpio Modem GPIO selection value.
+ */
 void Appnostic_SC16IS7XX::setModemPin(modem_gpio_t gpio) {
     uint8_t tmp_iocontrol;
 
@@ -356,6 +376,10 @@ void Appnostic_SC16IS7XX::setModemPin(modem_gpio_t gpio) {
     writeRegister(SC16IS7XX_REG_IOCONTROL << 3, tmp_iocontrol);
 }
 
+/**
+ * @brief Enable or disable GPIO state latching.
+ * @param enabled True to enable latching, false to disable.
+ */
 void Appnostic_SC16IS7XX::setGPIOLatch(bool enabled) {
     uint8_t tmp_iocontrol;
 

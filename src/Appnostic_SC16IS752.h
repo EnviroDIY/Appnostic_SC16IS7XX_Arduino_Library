@@ -9,6 +9,9 @@
 #define SC16IS752_CHANNEL_B 0x01
 #define SC16IS752_CHANNEL_BOTH 0x00
 
+/**
+ * @brief UART line and FIFO settings used by Appnostic_SC16IS752.
+ */
 typedef struct {
     bool    fifo     = true;
     bool    baud     = 115200;
@@ -17,6 +20,9 @@ typedef struct {
     uint8_t stopBits = 1;
 } uart_settings_t;
 
+/**
+ * @brief SC16IS752 dual-channel UART driver.
+ */
 class Appnostic_SC16IS752 : public Appnostic_SC16IS7XX {
  private:
     uart_settings_t settings;
@@ -56,6 +62,9 @@ class Appnostic_SC16IS752 : public Appnostic_SC16IS7XX {
     void   flush();
 };
 
+/**
+ * @brief Default external serial instance.
+ */
 extern Appnostic_SC16IS752 ExtSerial;
 
 #endif

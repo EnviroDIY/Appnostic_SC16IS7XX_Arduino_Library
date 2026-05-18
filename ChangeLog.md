@@ -16,7 +16,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
-- Added structure and workflow matching other EnvirDIY libraries
+- Added structure and workflow matching other EnviroDIY libraries
 
 ### Removed
 

@@ -1,0 +1,25 @@
+{
+  "version": "0.2",
+  "ignorePaths": [],
+  "dictionaryDefinitions": [],
+  "dictionaries": [],
+  "words": [
+    "Appnostic",
+    "CTSRTS",
+    "doxyfile",
+    "EFCR",
+    "EnviroDIY",
+    "IOINTENA",
+    "mcss",
+    "MSBFIRST",
+    "RXLVL",
+    "SC16IS750",
+    "SC16IS751",
+    "SC16IS752",
+    "SC16IS7XX",
+    "UART",
+    "XTAL"
+  ],
+  "ignoreWords": [],
+  "import": []
+}
