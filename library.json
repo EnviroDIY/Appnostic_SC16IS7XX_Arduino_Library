@@ -1,0 +1,36 @@
+{
+  "name": "EnviroDIY SC16IS7XX",
+  "version": "1.0.0",
+  "description": "Arduino Library for SC16IS7XX I2C and SPI UART interfaces",
+  "keywords": "EnviroDIY, SC16IS7XX, I2C, SPI, UART, SC16IS750, SC16IS751, SC16IS752",
+  "platforms": "*",
+  "frameworks": "arduino",
+  "authors": [
+    {
+      "name": "Sara Damiano",
+      "email": "sdamiano@stroudcenter.org",
+      "url": "https://envirodiy.org/",
+      "maintainer": true
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EnviroDIY/Appnostic_SC16IS7XX_Arduino_Library.git"
+  },
+  "export": {
+    "include": [
+      "LICENSE.md",
+      "library.json",
+      "library.properties",
+      "README.md",
+      "src/*",
+      "examples/*"
+    ]
+  },
+  "examples": ["examples/*/*.ino"],
+  "build": {
+    "srcFilter": ["+<*.c>", "+<*.cpp>", "+<*.h>"],
+    "libLDFMode": "deep+"
+  },
+  "dependencies": []
+}
