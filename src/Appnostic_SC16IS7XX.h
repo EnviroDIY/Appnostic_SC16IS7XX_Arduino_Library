@@ -5,9 +5,9 @@
 
 #if ARDUINO >= 100
 #include "Arduino.h"
-#else // if ARDUINO >= 100
+#else  // if ARDUINO >= 100
 #include "WProgram.h"
-#endif // if ARDUINO >= 100
+#endif  // if ARDUINO >= 100
 
 #include <SPI.h>
 #include <Wire.h>
@@ -83,27 +83,22 @@
 #define SC16IS7XX_PROTOCOL_I2C (0)
 #define SC16IS7XX_PROTOCOL_SPI (1)
 
-typedef enum
-{
-    MODEM_PIN_GPIO_0 = 0,
-    MODEM_PIN_GPIO_1 = 1
-} modem_gpio_t;
+typedef enum { MODEM_PIN_GPIO_0 = 0, MODEM_PIN_GPIO_1 = 1 } modem_gpio_t;
 
-class Appnostic_SC16IS7XX : public Stream
-{
-private:
-    uint8_t device_protocol = SC16IS7XX_PROTOCOL_I2C;
-    uint8_t device_address = SC16IS7XX_ADDRESS_AA;
+class Appnostic_SC16IS7XX : public Stream {
+ private:
+    uint8_t  device_protocol   = SC16IS7XX_PROTOCOL_I2C;
+    uint8_t  device_address    = SC16IS7XX_ADDRESS_AA;
     uint32_t crystal_frequency = SC16IS7XX_XTAL_FREQ;
 
     // methods that need to be implemented by derived classes
     virtual bool ping();
     virtual void resetDevice();
 
-protected:
+ protected:
     static bool _initialized;
 
-public:
+ public:
     // constructor
     Appnostic_SC16IS7XX() {};
     ~Appnostic_SC16IS7XX() {};
@@ -116,8 +111,8 @@ public:
 
     // stream writing
     virtual size_t write(uint8_t val);
-    virtual size_t write(const uint8_t *buf, size_t size);
-    using Print::write; // write(str) and write(buf, size)
+    virtual size_t write(const uint8_t* buf, size_t size);
+    using Print::write;  // write(str) and write(buf, size)
     virtual void flush();
 
     // i2c
@@ -129,28 +124,28 @@ public:
     bool begin_spi();
 
     // configuration
-    void setCrystalFrequency(uint32_t frequency);
+    void     setCrystalFrequency(uint32_t frequency);
     uint32_t getCrystalFrequency();
 
     // registers
-    void writeRegister(uint8_t reg_addr, uint8_t val);
+    void    writeRegister(uint8_t reg_addr, uint8_t val);
     uint8_t readRegister(uint8_t reg_addr);
 
     // gpio
-    virtual void pinMode(uint8_t pin, uint8_t mode);
-    virtual void digitalWrite(uint8_t pin, uint8_t state);
+    virtual void    pinMode(uint8_t pin, uint8_t mode);
+    virtual void    digitalWrite(uint8_t pin, uint8_t state);
     virtual uint8_t digitalRead(uint8_t pin);
-    void enableInterruptControl(bool enabled);
-    void setPinInterrupt(uint8_t pin, bool enabled);
-    uint8_t getPinInterrupt(uint8_t pin);
-    int getLastInterruptPin();
-    uint8_t isr();
-    void setPortState(uint8_t state);
-    uint8_t getPortState();
-    void setPortMode(uint8_t mode);
-    uint8_t getPortMode();
-    void setModemPin(modem_gpio_t gpio);
-    void setGPIOLatch(bool enabled);
+    void            enableInterruptControl(bool enabled);
+    void            setPinInterrupt(uint8_t pin, bool enabled);
+    uint8_t         getPinInterrupt(uint8_t pin);
+    int             getLastInterruptPin();
+    uint8_t         isr();
+    void            setPortState(uint8_t state);
+    uint8_t         getPortState();
+    void            setPortMode(uint8_t mode);
+    uint8_t         getPortMode();
+    void            setModemPin(modem_gpio_t gpio);
+    void            setGPIOLatch(bool enabled);
 };
 
 #endif

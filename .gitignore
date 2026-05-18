@@ -90,6 +90,7 @@ runDoxygen.bat
 platformio_extra_envs.ini
 cache
 output_*.log
+clang-format-all.py
 clang_format_all.bat
 arduino_lint.md
 arduino_lint.json

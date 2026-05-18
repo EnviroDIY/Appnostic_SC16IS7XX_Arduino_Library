@@ -25,30 +25,26 @@ bool interrupted = false;
 /**
  * @brief interrupt handler for NOS8007 IRQ
  */
-void onInterrupt()
-{
+void onInterrupt() {
     interrupted = true;
 }
 
-void setup()
-{
+void setup() {
     // enable NOS8007 power by setting the EN pin of
     // the NOS10001 baseboard to HIGH
     pinMode(A3, OUTPUT);
     digitalWrite(A3, HIGH);
-    delay(100); // let things settle
+    delay(100);  // let things settle
 
     Serial.begin(115200);
-    while (!Serial)
-        delay(100);
+    while (!Serial) delay(100);
     Serial.println("NOS8007 Test");
 
     Serial.print("Checking for NOS8007...");
-    if (!ExtSerial.begin_i2c())
-    {
-        Serial.println("not found. Please ensure that the module\r\nis plugged in and securely fastened to the baseboard.");
-        while (true)
-            delay(100);
+    if (!ExtSerial.begin_i2c()) {
+        Serial.println("not found. Please ensure that the module\r\nis plugged "
+                       "in and securely fastened to the baseboard.");
+        while (true) delay(100);
     }
     Serial.println("found!");
 
@@ -63,17 +59,15 @@ void setup()
 
     // on the NOS10001 Arduino baseboard the IRQ of the NOS8007
     // is on pin D7
-    pinMode(NOS8007_IRQ, INPUT);                                               // no pull required
-    attachInterrupt(digitalPinToInterrupt(NOS8007_IRQ), onInterrupt, FALLING); // interrupt transitions from high to low
+    pinMode(NOS8007_IRQ, INPUT);  // no pull required
+    attachInterrupt(digitalPinToInterrupt(NOS8007_IRQ), onInterrupt,
+                    FALLING);  // interrupt transitions from high to low
 }
 
-void loop()
-{
-    if (interrupted == true)
-    {
+void loop() {
+    if (interrupted == true) {
         interrupted = false;
-        if (ExtSerial.isr() == SC16IS7XX_INT_GPIO)
-        {
+        if (ExtSerial.isr() == SC16IS7XX_INT_GPIO) {
             Serial.print("Interrupt Pin: ");
             Serial.print(GPIO_PIN);
             Serial.print(", State: ");
