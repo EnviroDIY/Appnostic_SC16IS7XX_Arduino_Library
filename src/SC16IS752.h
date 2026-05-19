@@ -43,10 +43,13 @@
 class SC16IS752 : public SC16IS7XX, public Stream {
  private:
     uint8_t _channel;
-    uint8_t _peek_flag = 0;
-    int     _peek_buf  = -1;
+    bool    _peek_flag = 0;  ///< Flag to indicate if there's a peeked byte
+    int _peek_buf = -1;  ///< peeked byte value, valid only if _peek_flag is set
 
     uint8_t FIFOAvailableSpace();
+    int     rawRead();
+    int     rawRead(uint8_t* buf, size_t size);
+    void    EnableTransmit(uint8_t tx_enable);
 
  public:
     SC16IS752(uint8_t channel);

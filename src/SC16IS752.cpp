@@ -302,16 +302,38 @@ uint8_t SC16IS752::FIFOAvailableSpace() {
  * @brief Read one byte from UART RX FIFO.
  * @return int Byte value, or -1 when no data is available.
  */
-int SC16IS752::read() {
+int SC16IS752::rawRead() {
     Adafruit_BusIO_Register RHR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                 (SC16IS7XX_REG_RHR << 3 | _channel << 1));
     return RHR.read();
 }
 
-int SC16IS752::read(uint8_t* buf, size_t size) {
+int SC16IS752::rawRead(uint8_t* buf, size_t size) {
     Adafruit_BusIO_Register RHR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                 (SC16IS7XX_REG_RHR << 3 | _channel << 1));
     return RHR.read(buf, size);
+}
+
+int SC16IS752::read() {
+    // if there's a peeked byte, return that instead of reading from the FIFO
+    if (_peek_flag) {
+        _peek_flag = 0;
+        return _peek_buf;
+    }
+    // otherwise, read from the FIFO as normal
+    return rawRead();
+}
+
+int SC16IS752::read(uint8_t* buf, size_t size) {
+    // if there's a peeked byte, place that in the first position of the buffer
+    // and read the rest from the FIFO
+    if (_peek_flag) {
+        _peek_flag = 0;
+        *buf       = _peek_buf;
+        return rawRead(buf + 1, size - 1) + 1;
+    }
+    // otherwise, read from the FIFO as normal
+    return rawRead(buf, size);
 }
 
 /**
@@ -329,12 +351,11 @@ int SC16IS752::available() {
  * @return int Next byte value, or -1 when no data is available.
  */
 int SC16IS752::peek() {
-    if (peek_flag == 0) {
-        peek_buf = read();
-        if (peek_buf >= 0) { peek_flag = 1; }
+    if (_peek_flag == 0) {
+        _peek_buf = read();
+        if (_peek_buf >= 0) { _peek_flag = 1; }
     }
-
-    return peek_buf;
+    return _peek_buf;
 }
 
 /**
