@@ -7,8 +7,9 @@
 #include "WProgram.h"
 #endif  // if ARDUINO >= 100
 
-#include <SPI.h>
-#include <Wire.h>
+#include <Adafruit_BusIO_Register.h>
+#include <Adafruit_I2CDevice.h>
+#include <Adafruit_SPIDevice.h>
 
 // Possible Device Addresses
 // Modified from Table 32. SC16IS752/SC16IS762 address map
@@ -156,24 +157,16 @@
  */
 class SC16IS7XX {
  private:
-    uint8_t  device_protocol   = SC16IS7XX_PROTOCOL_I2C;
-    uint8_t  device_address    = SC16IS7XX_ADDRESS_AA;
-    uint32_t crystal_frequency = SC16IS7XX_XTAL_FREQ;
+    uint32_t crystal_frequency = SC16IS7XX_DEFAULT_XTAL_FREQ;
 
-    // methods that need to be implemented by derived classes
-    /**
-     * @brief tests the device to check if it is online
-     * @return true if the device is online, false otherwise
-     */
-    virtual bool ping();
-    virtual void resetDevice();
+    bool _init(void);
 
  protected:
-    /**
-     * @brief Flag for whether the device has been initialized. Used to prevent
-     * multiple initializations in begin_i2c and begin_spi.
-     */
-    static bool _initialized;
+    Adafruit_I2CDevice* i2c_dev = nullptr;  ///< Pointer to I2C bus interface
+    Adafruit_SPIDevice* spi_dev = nullptr;  ///< Pointer to SPI bus interface
+
+    virtual void resetDevice();
+    virtual bool ping();
 
  public:
     /**
@@ -187,36 +180,49 @@ class SC16IS7XX {
     ~SC16IS7XX() {};
 
     // i2c
-    bool begin_i2c(uint8_t addr);
-    bool begin_i2c();
+    bool begin_i2c(uint8_t  addr    = SC16IS7XX_DEFAULT_ADDRESS,
+                   TwoWire* theWire = &Wire);
 
     // spi
-    bool begin_spi(uint8_t cs);
-    bool begin_spi();
+    bool begin_SPI(uint8_t cs_pin, SPIClass* theSPI = &SPI,
+                   uint32_t frequency = SC16IS7XX_DEFAULT_SPIFREQ);
+    bool begin_SPI(int8_t cs_pin, int8_t sck_pin, int8_t miso_pin,
+                   int8_t   mosi_pin,
+                   uint32_t frequency = SC16IS7XX_DEFAULT_SPIFREQ);
 
     // configuration
     void     setCrystalFrequency(uint32_t frequency);
     uint32_t getCrystalFrequency();
 
-    // registers
-    void    writeRegister(uint8_t reg_addr, uint8_t val);
-    uint8_t readRegister(uint8_t reg_addr);
-
     // gpio
     virtual void    pinMode(uint8_t pin, uint8_t mode);
     virtual void    digitalWrite(uint8_t pin, uint8_t state);
     virtual uint8_t digitalRead(uint8_t pin);
-    void            enableInterruptControl(bool enabled);
-    void            setPinInterrupt(uint8_t pin, bool enabled);
-    uint8_t         getPinInterrupt(uint8_t pin);
-    int             getLastInterruptPin();
-    uint8_t         isr();
-    void            setPortState(uint8_t state);
-    uint8_t         getPortState();
-    void            setPortMode(uint8_t mode);
-    uint8_t         getPortMode();
-    void            setModemPin(modem_gpio_t gpio);
-    void            setGPIOLatch(bool enabled);
+
+    void enableSleepMode(bool enabled);
+    bool isSleepEnabled();
+
+    void enableCTSInterrupt(bool enabled);
+    void enableRTSInterrupt(bool enabled);
+    void enableXOFFInterrupt(bool enabled);
+    void enableXONInterrupt(bool enabled);
+    void enableModemInterrupt(bool enabled);
+    void enableRLSInterrupt(bool enabled);
+    void enableTHRInterrupt(bool enabled);
+    void enableRHRInterrupt(bool enabled);
+
+    void    setPinInterrupt(uint8_t pin, bool enabled);
+    uint8_t getPinInterrupt(uint8_t pin);
+    int     getLastInterruptPin();
+    uint8_t isr();
+    void    setPortState(uint8_t state);
+    uint8_t getPortState();
+    void    setPortMode(uint8_t mode);
+    uint8_t getPortMode();
+
+    void setGPIOLatch(bool enabled);
 };
 
 #endif
+
+// cSpell:words SPIFREQ SPIREG MISO MOSI

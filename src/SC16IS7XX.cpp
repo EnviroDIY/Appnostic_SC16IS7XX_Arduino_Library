@@ -17,74 +17,6 @@
 
 #include "SC16IS7XX.h"
 
-#ifdef __AVR__
-#define WIRE Wire
-#define SPI_SS PIN_SPI_SS
-#elif defined(ARDUINO_MINIMA)  // SC16IS7XX minima r4 support
-#define WIRE Wire
-#define SPI_SS PIN_SPI_CS
-#elif defined(ESP8266) || defined(ESP32)  // ESP8266/ESP32
-#define WIRE Wire
-#define SPI_SS PIN_SPI_SS
-#elif ESP32  // ESP8266
-#define WIRE Wire
-#define SPI_SS PIN_SPI_SS
-#else  // Arduino Due
-#define WIRE Wire1
-#define SPI_SS PIN_SPI_SS
-#endif  // ifdef __AVR__
-
-bool SC16IS7XX::_initialized = false;
-
-/*** REGISTERS *****************************************************/
-
-/**
- * @brief writes to the register of the device via i2c or spi
- * @param reg_addr the address of the register to write to
- * @param val the value to write to the register
- */
-void SC16IS7XX::writeRegister(uint8_t reg_addr, uint8_t val) {
-    if (device_protocol == SC16IS7XX_PROTOCOL_I2C) {
-        WIRE.beginTransmission(device_address);
-        WIRE.write(reg_addr);
-        WIRE.write(val);
-        WIRE.endTransmission(true);
-    } else {
-        ::digitalWrite(device_address, LOW);
-        delayMicroseconds(10);
-        SPI.transfer(reg_addr);
-        SPI.transfer(val);
-        delayMicroseconds(10);
-        ::digitalWrite(device_address, HIGH);
-    }
-}
-
-/**
- * @brief reads a register from the device via i2c or spi
- * @param reg_addr the address of the register to write to
- * @return the value read from the register
- */
-uint8_t SC16IS7XX::readRegister(uint8_t reg_addr) {
-    uint8_t result = 0;
-
-    if (device_protocol == SC16IS7XX_PROTOCOL_I2C) {
-        WIRE.beginTransmission(device_address);
-        WIRE.write(reg_addr);
-        WIRE.endTransmission(false);
-        WIRE.requestFrom(device_address, (uint8_t)1);
-        result = WIRE.read();
-    } else {
-        ::digitalWrite(device_address, LOW);
-        delayMicroseconds(10);
-        SPI.transfer(0x80 | reg_addr);
-        result = SPI.transfer(0xff);
-        delayMicroseconds(10);
-        ::digitalWrite(device_address, HIGH);
-    }
-
-    return result;
-}
-
 /*** CONFIG *******************************************************/
 
 /**
@@ -113,84 +45,127 @@ uint32_t SC16IS7XX::getCrystalFrequency() {
  * @brief derived function to reset the device
  */
 void SC16IS7XX::resetDevice() {
-    uint8_t reg;
+    Adafruit_BusIO_Register     IOControl(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                          SC16IS7XX_REG_IOCONTROL << 3);
+    Adafruit_BusIO_RegisterBits reset_bit(&IOControl, 1, 3);
+    reset_bit.write(1);
+}
 
-    reg = readRegister(SC16IS7XX_REG_IOCONTROL << 3);
-    reg |= 0x08;
-    writeRegister(SC16IS7XX_REG_IOCONTROL << 3, reg);
+/**
+ * @brief tests the device to check if it is online by writing and reading from
+ * the scratchpad register on both channels
+ * @return true if the device is online, false otherwise
+ */
+bool SC16IS7XX::ping() {
+    for (uint8_t channel = 0; channel < 2; channel++) {
+        Adafruit_BusIO_Register SPR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                    (SC16IS7XX_REG_SPR << 3 | channel << 1));
+        // two attempts to write and read from the scratchpad register
+        SPR.write(0x55);
+        if (SPR.read() == 0x55) { return true; }
+        SPR.write(0xAA);
+        if (SPR.read() == 0xAA) { return true; }
+    }
+    return false;
+}
+
+
+bool SC16IS7XX::_init() {
+    resetDevice();
+    delayMicroseconds(100);  // let things settle
+    return ping();
 }
 
 /*** I2C *********************************************************/
 
 /**
  * @brief begins an i2c session for the target address
- * @param addr the i2c address of the device. If the address is between 0x48 and
- * 0x57, it is used directly. Otherwise, it is right shifted by one bit and used
- * as the address. This allows for both 7-bit and 8-bit address formats to be
- * used.
+ * @param addr Optional parameter for the i2c address of the device. If the
+ * address is between 0x48 and 0x57, it is used directly. Otherwise, it is right
+ * shifted by one bit and used as the address. This allows for both 7-bit and
+ * 8-bit address formats to be used.  If nothing is supplied, the default
+ * address of #SC16IS7XX_DEFAULT_ADDRESS is used.
+    @param  theWire Optional parameter for the I2C device we will use. Default
+   is "Wire"
  * @return true if the device was successfully initialized, false otherwise
  */
-bool SC16IS7XX::begin_i2c(uint8_t addr) {
+bool SC16IS7XX::begin_i2c(uint8_t addr, TwoWire* theWire) {
+    uint8_t seven_bit_addr;
+    // if we have one of the possible 7-bit addresses, use it directly
     if ((addr >= 0x48) && (addr <= 0x57)) {
-        device_address = addr;
-    } else {
-        device_address = (addr >> 1);
+        seven_bit_addr = addr;
+    } else if ((addr >= 0x90) &&
+               (addr <= 0xAF)) {  // if we have a possible 8-bit address, right
+                                  // shift it to get the 7-bit address
+        seven_bit_addr = (addr >> 1);
+    } else {  // otherwise return false since the address is invalid
+        return false;
     }
-    device_protocol = SC16IS7XX_PROTOCOL_I2C;
 
-    if (_initialized == true) {
-        return true;  // i2c already running
-    }
+    if (i2c_dev) delete i2c_dev;
+    if (spi_dev) delete spi_dev;
+    spi_dev = nullptr;
 
-    WIRE.begin();  // start i2c
-    WIRE.setClock(400000);
-    resetDevice();
-    delayMicroseconds(100);  // let things settle
-    _initialized = true;
-    return ping();
+    i2c_dev = new Adafruit_I2CDevice(seven_bit_addr, theWire);
+
+    // verify i2c address was found
+    if (!i2c_dev->begin()) { return false; }
+
+    return _init();
 }
 
-/**
- * @brief shorthand method to start i2c with the SC16IS7XX default address
- * @return true if the device was successfully initialized, false otherwise
- */
-bool SC16IS7XX::begin_i2c() {
-    return begin_i2c(SC16IS7XX_ADDRESS_AA);
-}
 
 /*** SPI *********************************************************/
 
 /**
- * @brief sets up SPI
- * @note untested, but assumed working
- * @param cs the chip select pin to use for SPI communication
- * @return true if the device was successfully initialized, false otherwise
+ *    @brief  Sets up the hardware and initializes hardware SPI
+ *    @param  cs_pin The arduino pin # connected to chip select
+ *    @param  theSPI The SPI object to be used for SPI connections.
+ *    @param  frequency The SPI bus frequency
+ *    @return True if initialization was successful, otherwise false.
  */
-bool SC16IS7XX::begin_spi(uint8_t cs) {
-    device_protocol = SC16IS7XX_PROTOCOL_SPI;
-    device_address  = cs;
+bool SC16IS7XX::begin_SPI(uint8_t cs_pin, SPIClass* theSPI,
+                          uint32_t frequency) {
+    if (i2c_dev) delete i2c_dev;
+    if (spi_dev) delete spi_dev;
+    i2c_dev = nullptr;
 
-    if (_initialized == true) {
-        return true;  // spi already running
-    }
+    spi_dev = new Adafruit_SPIDevice(cs_pin,
+                                     frequency,              // frequency
+                                     SPI_BITORDER_MSBFIRST,  // bit order
+                                     SPI_MODE0,              // data mode
+                                     theSPI);
 
-    ::pinMode(device_address, OUTPUT);
-    ::digitalWrite(device_address, HIGH);
-    SPI.beginTransaction(SPISettings(2000000, MSBFIRST, SPI_MODE0));
-    SPI.begin();
-    resetDevice();
-    delayMicroseconds(100);  // let things settle
-    _initialized = true;
-    return ping();
+    if (!spi_dev->begin()) { return false; }
+
+    return _init();
 }
 
 /**
- * @brief shorthand to start spi at default CS pin
- * @return true if the device was successfully initialized, false otherwise
+ *    @brief  Sets up the hardware and initializes software SPI
+ *    @param  cs_pin The arduino pin # connected to chip select
+ *    @param  sck_pin The arduino pin # connected to SPI clock
+ *    @param  miso_pin The arduino pin # connected to SPI MISO
+ *    @param  mosi_pin The arduino pin # connected to SPI MOSI
+ *    @param  frequency The SPI bus frequency
+ *    @return True if initialization was successful, otherwise false.
  */
-bool SC16IS7XX::begin_spi() {
-    return begin_spi(SPI_SS);
+bool SC16IS7XX::begin_SPI(int8_t cs_pin, int8_t sck_pin, int8_t miso_pin,
+                          int8_t mosi_pin, uint32_t frequency) {
+    if (i2c_dev) delete i2c_dev;
+    if (spi_dev) delete spi_dev;
+    i2c_dev = nullptr;
+
+    spi_dev = new Adafruit_SPIDevice(cs_pin, sck_pin, miso_pin, mosi_pin,
+                                     frequency,              // frequency
+                                     SPI_BITORDER_MSBFIRST,  // bit order
+                                     SPI_MODE0);             // data mode
+
+    if (!spi_dev->begin()) { return false; }
+
+    return _init();
 }
+
 
 /*** GPIO **************************************************/
 
@@ -200,17 +175,10 @@ bool SC16IS7XX::begin_spi() {
  * @param mode The pin mode, either INPUT or OUTPUT
  */
 void SC16IS7XX::pinMode(uint8_t pin, uint8_t mode) {
-    uint8_t tmp_iodir;
-
-    tmp_iodir = readRegister(SC16IS7XX_REG_IODIR << 3);
-
-    if (mode == OUTPUT) {
-        tmp_iodir |= (0x01 << pin);
-    } else {
-        tmp_iodir &= (uint8_t)~(0x01 << pin);
-    }
-
-    writeRegister(SC16IS7XX_REG_IODIR << 3, tmp_iodir);
+    Adafruit_BusIO_Register     IODir(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                      SC16IS7XX_REG_IODIR << 3);
+    Adafruit_BusIO_RegisterBits dir_bit(&IODir, 1, pin % 8);
+    dir_bit.write((mode == OUTPUT) ? 0 : 1);
 }
 
 /**
@@ -219,17 +187,10 @@ void SC16IS7XX::pinMode(uint8_t pin, uint8_t mode) {
  * @param state the pin state, either LOW (0) or HIGH (1)
  */
 void SC16IS7XX::digitalWrite(uint8_t pin, uint8_t state) {
-    uint8_t tmp_iostate;
-
-    tmp_iostate = readRegister(SC16IS7XX_REG_IOSTATE << 3);
-
-    if (state == 1) {
-        tmp_iostate |= (0x01 << pin);
-    } else {
-        tmp_iostate &= (uint8_t)~(0x01 << pin);
-    }
-
-    writeRegister(SC16IS7XX_REG_IOSTATE << 3, tmp_iostate);
+    Adafruit_BusIO_Register     IOState(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                        SC16IS7XX_REG_IOSTATE << 3);
+    Adafruit_BusIO_RegisterBits state_bit(&IOState, 1, pin % 8);
+    state_bit.write(state);
 }
 
 /**
@@ -238,21 +199,138 @@ void SC16IS7XX::digitalWrite(uint8_t pin, uint8_t state) {
  * @return the pin state, either LOW (0) or HIGH (1)
  */
 uint8_t SC16IS7XX::digitalRead(uint8_t pin) {
-    uint8_t tmp_iostate;
-
-    tmp_iostate = readRegister(SC16IS7XX_REG_IOSTATE << 3);
-
-    if ((tmp_iostate & (0x01 << pin)) == 0) { return 0; }
-    return 1;
+    Adafruit_BusIO_Register     IOState(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                        SC16IS7XX_REG_IOSTATE << 3);
+    Adafruit_BusIO_RegisterBits state_bit(&IOState, 1, pin % 8);
+    return state_bit.read();
 }
 
 /**
- * @brief sets the interrupt enable register to enable interrupts
- * @note enables all six types of interrupts
+ * @brief sets the interrupt enable register to enable sleep mode
+ *
+ * Sleep mode is an enhanced feature of the SC16IS752/SC16IS762 UART. It is
+ * enabled when EFR[4], the enhanced functions bit, is set and when IER[4] is
+ * set. Sleep mode is entered when:
+ *   - The serial data input line, RX, is idle
+ *   - The TX FIFO and TX shift register are empty
+ *   - There are no interrupts pending except THR
+ *   - There is no data in the RX FIFO
+ *
+ * In Sleep mode, the clock to the UART is stopped. Since most registers are
+ * clocked using these clocks, the power consumption is greatly reduced. The
+ * UART will wake up when any change is detected on the RX line, when there is
+ * any change in the state of the modem input pins, or if data is written to the
+ * TX FIFO.
+ *
+ * @remark Writing to the divisor latches DLL and DLH to set the baud clock must
+ * not be done during Sleep mode. Therefore, it is advisable to disable Sleep
+ * mode using IER[4] before writing to DLL or DLH.
+ *
+ * @param enabled true enables sleep mode, false disables it
+ */
+void SC16IS7XX::enableSleepMode(bool enabled) {
+    Adafruit_BusIO_Register     IER(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                    SC16IS7XX_REG_IER << 3);
+    Adafruit_BusIO_RegisterBits sleep(&IER, 1, SC16IS7XX_IER_SLEEP);
+    sleep.write(enabled);
+}
+
+/**
+ * @brief Checks if sleep mode is enabled by reading the interrupt enable
+ * register.
+ *
+ * @note This is NOT a check for whether the device is currently in sleep mode,
+ * but rather whether sleep mode is enabled and can be entered when the
+ * conditions for sleep mode are met.
+ *
+ * @return True if sleep mode is enabled, false otherwise
+ */
+bool SC16IS7XX::isSleepEnabled() {
+    Adafruit_BusIO_Register     IER(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                    SC16IS7XX_REG_IER << 3);
+    Adafruit_BusIO_RegisterBits sleep(&IER, 1, SC16IS7XX_IER_SLEEP);
+    return sleep.read();
+}
+
+/**
+ * @brief sets the interrupt enable register to enable CTS interrupts
  * @param enabled true enables interrupts, false disables them
  */
-void SC16IS7XX::enableInterruptControl(bool enabled) {
-    writeRegister(SC16IS7XX_REG_IER << 3, enabled);
+void SC16IS7XX::enableCTSInterrupt(bool enabled) {
+    Adafruit_BusIO_Register     IER(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                    SC16IS7XX_REG_IER << 3);
+    Adafruit_BusIO_RegisterBits cts(&IER, 1, SC16IS7XX_IER_CTS);
+    cts.write(enabled);
+}
+
+/**
+ * @brief sets the interrupt enable register to enable RTS interrupts
+ * @param enabled true enables interrupts, false disables them
+ */
+void SC16IS7XX::enableRTSInterrupt(bool enabled) {
+    Adafruit_BusIO_Register     IER(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                    SC16IS7XX_REG_IER << 3);
+    Adafruit_BusIO_RegisterBits rts(&IER, 1, SC16IS7XX_IER_RTS);
+    rts.write(enabled);
+}
+
+/**
+ * @brief sets the interrupt enable register to enable XOFF interrupts
+ * @param enabled true enables interrupts, false disables them
+ */
+void SC16IS7XX::enableXOFFInterrupt(bool enabled) {
+    Adafruit_BusIO_Register     IER(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                    SC16IS7XX_REG_IER << 3);
+    Adafruit_BusIO_RegisterBits xoff(&IER, 1, SC16IS7XX_IER_XOFF);
+    xoff.write(enabled);
+}
+
+/**
+ * @brief sets the interrupt enable register to enable modem/pin change
+ * interrupts
+ * @param enabled true enables interrupts, false disables them
+ */
+void SC16IS7XX::enableModemInterrupt(bool enabled) {
+    Adafruit_BusIO_Register     IER(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                    SC16IS7XX_REG_IER << 3);
+    Adafruit_BusIO_RegisterBits modem(&IER, 1, SC16IS7XX_IER_MODEM);
+    modem.write(enabled);
+}
+
+/**
+ * @brief sets the interrupt enable register to enable receive line status
+ * interrupts
+ * @param enabled true enables interrupts, false disables them
+ */
+void SC16IS7XX::enableRLSInterrupt(bool enabled) {
+    Adafruit_BusIO_Register     IER(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                    SC16IS7XX_REG_IER << 3);
+    Adafruit_BusIO_RegisterBits rls(&IER, 1, SC16IS7XX_IER_RLS);
+    rls.write(enabled);
+}
+
+/**
+ * @brief sets the interrupt enable register to enable transmit holding register
+ * interrupts
+ * @param enabled true enables interrupts, false disables them
+ */
+void SC16IS7XX::enableTHRInterrupt(bool enabled) {
+    Adafruit_BusIO_Register     IER(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                    SC16IS7XX_REG_IER << 3);
+    Adafruit_BusIO_RegisterBits thr(&IER, 1, SC16IS7XX_IER_THR);
+    thr.write(enabled);
+}
+
+/**
+ * @brief sets the interrupt enable register to enable receive holding register
+ * interrupts
+ * @param enabled true enables interrupts, false disables them
+ */
+void SC16IS7XX::enableRHRInterrupt(bool enabled) {
+    Adafruit_BusIO_Register     IER(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                    SC16IS7XX_REG_IER << 3);
+    Adafruit_BusIO_RegisterBits rhr(&IER, 1, SC16IS7XX_IER_RHR);
+    rhr.write(enabled);
 }
 
 /**
@@ -262,36 +340,41 @@ void SC16IS7XX::enableInterruptControl(bool enabled) {
  * @param enabled true enables the interrupt, false disables it
  */
 void SC16IS7XX::setPinInterrupt(uint8_t pin, bool enabled) {
-    uint8_t tmp_iostate;
-
-    tmp_iostate = readRegister(SC16IS7XX_REG_IOINTENA << 3);
-
-    if (enabled == true) {
-        tmp_iostate |= (0x01 << pin);
-    } else {
-        tmp_iostate &= (uint8_t)~(0x01 << pin);
+    if (pin > 7) {
+        // Invalid pin number, do nothing or handle error as needed
+        return;
     }
 
-    writeRegister(SC16IS7XX_REG_IOINTENA << 3, tmp_iostate);
+    // Ensure that the pin is set to be an I/O pin and not a modem pin
+    Adafruit_BusIO_Register IOControl(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                      SC16IS7XX_REG_IOCONTROL << 3);
+    //   pins 0-3 are controlled by bit 2, pins 4-7 are controlled by bit 1
+    Adafruit_BusIO_RegisterBits modem_pin_bit(&IOControl, 1, pin > 3 ? 1 : 2);
+    modem_pin_bit.write(0);
+
+    // Now enable or disable the interrupt for the specific pin
+    Adafruit_BusIO_Register     IOIntEna(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                         SC16IS7XX_REG_IOINTENA << 3);
+    Adafruit_BusIO_RegisterBits enable_bit(&IOIntEna, 1, pin % 8);
+    enable_bit.write(enabled);
 }
 
 /**
- * @brief returns the interrupt status of a pin
+ * @brief returns whether or not an interrupt is enabled for a specific pin
  * @param pin the pin number on the port expander (0 - 7)
- * @return the interrupt status, either LOW (0) or HIGH (1)
+ * @return the interrupt enable status, either LOW (0) or HIGH (1)
  */
 uint8_t SC16IS7XX::getPinInterrupt(uint8_t pin) {
-    uint8_t tmp_iostate;
-
-    tmp_iostate = readRegister(SC16IS7XX_REG_IOINTENA << 3);
-
-    if ((tmp_iostate & (0x01 << pin)) == 0) { return 0; }
-    return 1;
+    Adafruit_BusIO_Register     IOIntEna(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                         SC16IS7XX_REG_IOINTENA << 3);
+    Adafruit_BusIO_RegisterBits enable_bit(&IOIntEna, 1, pin % 8);
+    return enable_bit.read();
 }
 
 /**
- * @brief This will need some sort of manual tracking. Perhaps keep a record of
- * interrupt-enabled pins and track their changes.
+ * @brief Gets the last pin to trigger an interrupt.
+ * @warning This doesn't seem to be possible on this device, so this function is
+ * not implemented and will always return -1.
  * @return the last pin that triggered an interrupt, or -1 if none
  */
 int SC16IS7XX::getLastInterruptPin() {
@@ -305,11 +388,12 @@ int SC16IS7XX::getLastInterruptPin() {
  * register
  */
 uint8_t SC16IS7XX::isr() {
-    uint8_t irq_src;
+    uint8_t                 irq_src;
+    Adafruit_BusIO_Register IIR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                SC16IS7XX_REG_IIR << 3);
 
-    irq_src = readRegister(SC16IS7XX_REG_IIR << 3);
-    // irq_src = (irq_src >> 1);
-    // irq_src &= 0x3F;
+    irq_src = IIR.read() & 0x3E;
+    //^ mask off the FCR[7:6] and interrupt pending [0] bits 0b00111110
 
     switch (irq_src) {
         case SC16IS7XX_INT_LINE:  // Receiver Line Status Error
@@ -339,7 +423,9 @@ uint8_t SC16IS7XX::isr() {
  * @param state Bitmask written to the IOSTATE register.
  */
 void SC16IS7XX::setPortState(uint8_t state) {
-    writeRegister(SC16IS7XX_REG_IOSTATE << 3, state);
+    Adafruit_BusIO_Register IOState(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                    SC16IS7XX_REG_IOSTATE << 3);
+    IOState.write(state);
 }
 
 /**
@@ -347,7 +433,9 @@ void SC16IS7XX::setPortState(uint8_t state) {
  * @return uint8_t Current GPIO state bitmask.
  */
 uint8_t SC16IS7XX::getPortState() {
-    return readRegister(SC16IS7XX_REG_IOSTATE << 3);
+    Adafruit_BusIO_Register IOState(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                    SC16IS7XX_REG_IOSTATE << 3);
+    return IOState.read();
 }
 
 /**
@@ -355,7 +443,9 @@ uint8_t SC16IS7XX::getPortState() {
  * @param mode Bitmask written to the IODIR register.
  */
 void SC16IS7XX::setPortMode(uint8_t mode) {
-    writeRegister(SC16IS7XX_REG_IODIR << 3, mode);
+    Adafruit_BusIO_Register IODir(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                  SC16IS7XX_REG_IODIR << 3);
+    IODir.write(mode);
 }
 
 /**
@@ -363,37 +453,33 @@ void SC16IS7XX::setPortMode(uint8_t mode) {
  * @return uint8_t Current GPIO direction bitmask.
  */
 uint8_t SC16IS7XX::getPortMode() {
-    return readRegister(SC16IS7XX_REG_IODIR << 3);
-}
-
-/**
- * @brief Select which GPIO pin is tied to modem signaling.
- * @param gpio Modem GPIO selection value.
- */
-void SC16IS7XX::setModemPin(modem_gpio_t gpio) {
-    uint8_t tmp_iocontrol;
-
-    tmp_iocontrol = readRegister(SC16IS7XX_REG_IOCONTROL << 3);
-    if (gpio == MODEM_PIN_GPIO_0) {
-        tmp_iocontrol |= 0x02;
-    } else {
-        tmp_iocontrol &= 0xFD;
-    }
-    writeRegister(SC16IS7XX_REG_IOCONTROL << 3, tmp_iocontrol);
+    Adafruit_BusIO_Register IODir(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                  SC16IS7XX_REG_IODIR << 3);
+    return IODir.read();
 }
 
 /**
  * @brief Enable or disable GPIO state latching.
  * @param enabled True to enable latching, false to disable.
+ *
+ * Latching Disabled:
+ *   - A change in any input generates an interrupt. A read of the input
+ * register clears the interrupt. If the input goes back to its initial logic
+ * state before the input register is read, then the interrupt is cleared.
+ *
+ * Latching Enabled:
+ *   - A change in the input generates an interrupt and the input logic value is
+ * loaded in the bit of the corresponding input state register (IOState). A read
+ * of the IOState register clears the interrupt. If the input pin goes back to
+ * its initial logic state before the interrupt register is read, then the
+ * interrupt is not cleared and the corresponding bit of the IOState register
+ * keeps the logic value that initiates the interrupt.
  */
 void SC16IS7XX::setGPIOLatch(bool enabled) {
-    uint8_t tmp_iocontrol;
-
-    tmp_iocontrol = readRegister(SC16IS7XX_REG_IOCONTROL << 3);
-    if (enabled == false) {
-        tmp_iocontrol &= 0xFE;
-    } else {
-        tmp_iocontrol |= 0x01;
-    }
-    writeRegister(SC16IS7XX_REG_IOCONTROL << 3, tmp_iocontrol);
+    Adafruit_BusIO_Register     IOControl(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                          SC16IS7XX_REG_IOCONTROL << 3);
+    Adafruit_BusIO_RegisterBits latch_bit(&IOControl, 1, 0);
+    latch_bit.write(enabled);
 }
+
+// cSpell:words SPIFREQ SPIREG MISO MOSI
