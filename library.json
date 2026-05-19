@@ -1,6 +1,6 @@
 {
   "name": "EnviroDIY SC16IS7XX",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Arduino Library for SC16IS7XX I2C and SPI UART interfaces",
   "keywords": "EnviroDIY, SC16IS7XX, I2C, SPI, UART, SC16IS750, SC16IS751, SC16IS752",
   "platforms": "*",
@@ -32,5 +32,16 @@
     "srcFilter": ["+<*.c>", "+<*.cpp>", "+<*.h>"],
     "libLDFMode": "deep+"
   },
-  "dependencies": []
+  "dependencies": [
+    {
+      "name": "Adafruit BusIO",
+      "owner": "adafruit",
+      "library id": "6214",
+      "url": "https://github.com/adafruit/Adafruit_BusIO",
+      "version": "~1.17.4",
+      "note": "Adafruit BusIO, a dependency of other Adafruit libraries",
+      "authors": ["Adafruit"],
+      "frameworks": "arduino"
+    }
+  ]
 }
