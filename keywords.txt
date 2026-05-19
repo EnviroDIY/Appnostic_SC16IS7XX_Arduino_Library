@@ -1,5 +1,5 @@
 uart_settings_t	KEYWORD1
-Appnostic_SC16IS752	KEYWORD1
+SC16IS752	KEYWORD1
 available	KEYWORD2
 flush	KEYWORD2
 peek	KEYWORD2
@@ -13,7 +13,7 @@ setFIFOTriggerLevel	KEYWORD2
 setLine	KEYWORD2
 write	KEYWORD2
 writeRegister	KEYWORD2
-Appnostic_SC16IS7XX	KEYWORD1
+SC16IS7XX	KEYWORD1
 available	KEYWORD2
 begin_i2c	KEYWORD2
 begin_spi	KEYWORD2

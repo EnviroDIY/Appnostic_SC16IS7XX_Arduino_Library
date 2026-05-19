@@ -15,7 +15,7 @@
  * Made with love by the Appnostic team!
  */
 
-#include "Appnostic_SC16IS7XX.h"
+#include "SC16IS7XX.h"
 
 #ifdef __AVR__
 #define WIRE Wire
@@ -34,7 +34,7 @@
 #define SPI_SS PIN_SPI_SS
 #endif  // ifdef __AVR__
 
-bool Appnostic_SC16IS7XX::_initialized = false;
+bool SC16IS7XX::_initialized = false;
 
 /*** REGISTERS *****************************************************/
 
@@ -43,7 +43,7 @@ bool Appnostic_SC16IS7XX::_initialized = false;
  * @param reg_addr the address of the register to write to
  * @param val the value to write to the register
  */
-void Appnostic_SC16IS7XX::writeRegister(uint8_t reg_addr, uint8_t val) {
+void SC16IS7XX::writeRegister(uint8_t reg_addr, uint8_t val) {
     if (device_protocol == SC16IS7XX_PROTOCOL_I2C) {
         WIRE.beginTransmission(device_address);
         WIRE.write(reg_addr);
@@ -64,7 +64,7 @@ void Appnostic_SC16IS7XX::writeRegister(uint8_t reg_addr, uint8_t val) {
  * @param reg_addr the address of the register to write to
  * @return the value read from the register
  */
-uint8_t Appnostic_SC16IS7XX::readRegister(uint8_t reg_addr) {
+uint8_t SC16IS7XX::readRegister(uint8_t reg_addr) {
     uint8_t result = 0;
 
     if (device_protocol == SC16IS7XX_PROTOCOL_I2C) {
@@ -95,7 +95,7 @@ uint8_t Appnostic_SC16IS7XX::readRegister(uint8_t reg_addr) {
  * rates and should be set correctly for accurate baud rates.
  * @param frequency the frequency of the crystal in hertz
  */
-void Appnostic_SC16IS7XX::setCrystalFrequency(uint32_t frequency) {
+void SC16IS7XX::setCrystalFrequency(uint32_t frequency) {
     crystal_frequency = frequency;
 }
 
@@ -103,7 +103,7 @@ void Appnostic_SC16IS7XX::setCrystalFrequency(uint32_t frequency) {
  * @brief gets the xtal frequency in hertz.
  * @return the frequency of the crystal in hertz
  */
-uint32_t Appnostic_SC16IS7XX::getCrystalFrequency() {
+uint32_t SC16IS7XX::getCrystalFrequency() {
     return crystal_frequency;
 }
 
@@ -112,7 +112,7 @@ uint32_t Appnostic_SC16IS7XX::getCrystalFrequency() {
 /**
  * @brief derived function to reset the device
  */
-void Appnostic_SC16IS7XX::resetDevice() {
+void SC16IS7XX::resetDevice() {
     uint8_t reg;
 
     reg = readRegister(SC16IS7XX_REG_IOCONTROL << 3);
@@ -130,7 +130,7 @@ void Appnostic_SC16IS7XX::resetDevice() {
  * used.
  * @return true if the device was successfully initialized, false otherwise
  */
-bool Appnostic_SC16IS7XX::begin_i2c(uint8_t addr) {
+bool SC16IS7XX::begin_i2c(uint8_t addr) {
     if ((addr >= 0x48) && (addr <= 0x57)) {
         device_address = addr;
     } else {
@@ -154,7 +154,7 @@ bool Appnostic_SC16IS7XX::begin_i2c(uint8_t addr) {
  * @brief shorthand method to start i2c with the SC16IS7XX default address
  * @return true if the device was successfully initialized, false otherwise
  */
-bool Appnostic_SC16IS7XX::begin_i2c() {
+bool SC16IS7XX::begin_i2c() {
     return begin_i2c(SC16IS7XX_ADDRESS_AA);
 }
 
@@ -166,7 +166,7 @@ bool Appnostic_SC16IS7XX::begin_i2c() {
  * @param cs the chip select pin to use for SPI communication
  * @return true if the device was successfully initialized, false otherwise
  */
-bool Appnostic_SC16IS7XX::begin_spi(uint8_t cs) {
+bool SC16IS7XX::begin_spi(uint8_t cs) {
     device_protocol = SC16IS7XX_PROTOCOL_SPI;
     device_address  = cs;
 
@@ -188,7 +188,7 @@ bool Appnostic_SC16IS7XX::begin_spi(uint8_t cs) {
  * @brief shorthand to start spi at default CS pin
  * @return true if the device was successfully initialized, false otherwise
  */
-bool Appnostic_SC16IS7XX::begin_spi() {
+bool SC16IS7XX::begin_spi() {
     return begin_spi(SPI_SS);
 }
 
@@ -199,7 +199,7 @@ bool Appnostic_SC16IS7XX::begin_spi() {
  * @param pin the output pin number on the port expander (0 - 7)
  * @param mode The pin mode, either INPUT or OUTPUT
  */
-void Appnostic_SC16IS7XX::pinMode(uint8_t pin, uint8_t mode) {
+void SC16IS7XX::pinMode(uint8_t pin, uint8_t mode) {
     uint8_t tmp_iodir;
 
     tmp_iodir = readRegister(SC16IS7XX_REG_IODIR << 3);
@@ -218,7 +218,7 @@ void Appnostic_SC16IS7XX::pinMode(uint8_t pin, uint8_t mode) {
  * @param pin the output pin number on the port expander (0 - 7)
  * @param state the pin state, either LOW (0) or HIGH (1)
  */
-void Appnostic_SC16IS7XX::digitalWrite(uint8_t pin, uint8_t state) {
+void SC16IS7XX::digitalWrite(uint8_t pin, uint8_t state) {
     uint8_t tmp_iostate;
 
     tmp_iostate = readRegister(SC16IS7XX_REG_IOSTATE << 3);
@@ -237,7 +237,7 @@ void Appnostic_SC16IS7XX::digitalWrite(uint8_t pin, uint8_t state) {
  * @param pin the pin number on the port expander (0 - 7)
  * @return the pin state, either LOW (0) or HIGH (1)
  */
-uint8_t Appnostic_SC16IS7XX::digitalRead(uint8_t pin) {
+uint8_t SC16IS7XX::digitalRead(uint8_t pin) {
     uint8_t tmp_iostate;
 
     tmp_iostate = readRegister(SC16IS7XX_REG_IOSTATE << 3);
@@ -251,7 +251,7 @@ uint8_t Appnostic_SC16IS7XX::digitalRead(uint8_t pin) {
  * @note enables all six types of interrupts
  * @param enabled true enables interrupts, false disables them
  */
-void Appnostic_SC16IS7XX::enableInterruptControl(bool enabled) {
+void SC16IS7XX::enableInterruptControl(bool enabled) {
     writeRegister(SC16IS7XX_REG_IER << 3, enabled);
 }
 
@@ -261,7 +261,7 @@ void Appnostic_SC16IS7XX::enableInterruptControl(bool enabled) {
  * @param pin the pin to configure an interrupt on
  * @param enabled true enables the interrupt, false disables it
  */
-void Appnostic_SC16IS7XX::setPinInterrupt(uint8_t pin, bool enabled) {
+void SC16IS7XX::setPinInterrupt(uint8_t pin, bool enabled) {
     uint8_t tmp_iostate;
 
     tmp_iostate = readRegister(SC16IS7XX_REG_IOINTENA << 3);
@@ -280,7 +280,7 @@ void Appnostic_SC16IS7XX::setPinInterrupt(uint8_t pin, bool enabled) {
  * @param pin the pin number on the port expander (0 - 7)
  * @return the interrupt status, either LOW (0) or HIGH (1)
  */
-uint8_t Appnostic_SC16IS7XX::getPinInterrupt(uint8_t pin) {
+uint8_t SC16IS7XX::getPinInterrupt(uint8_t pin) {
     uint8_t tmp_iostate;
 
     tmp_iostate = readRegister(SC16IS7XX_REG_IOINTENA << 3);
@@ -294,7 +294,7 @@ uint8_t Appnostic_SC16IS7XX::getPinInterrupt(uint8_t pin) {
  * interrupt-enabled pins and track their changes.
  * @return the last pin that triggered an interrupt, or -1 if none
  */
-int Appnostic_SC16IS7XX::getLastInterruptPin() {
+int SC16IS7XX::getLastInterruptPin() {
     return -1;
 }
 
@@ -304,7 +304,7 @@ int Appnostic_SC16IS7XX::getLastInterruptPin() {
  * @return the interrupt source as indicated by the interrupt identification
  * register
  */
-uint8_t Appnostic_SC16IS7XX::isr() {
+uint8_t SC16IS7XX::isr() {
     uint8_t irq_src;
 
     irq_src = readRegister(SC16IS7XX_REG_IIR << 3);
@@ -338,7 +338,7 @@ uint8_t Appnostic_SC16IS7XX::isr() {
  * @brief Write all GPIO output states at once.
  * @param state Bitmask written to the IOSTATE register.
  */
-void Appnostic_SC16IS7XX::setPortState(uint8_t state) {
+void SC16IS7XX::setPortState(uint8_t state) {
     writeRegister(SC16IS7XX_REG_IOSTATE << 3, state);
 }
 
@@ -346,7 +346,7 @@ void Appnostic_SC16IS7XX::setPortState(uint8_t state) {
  * @brief Read all GPIO states from the IOSTATE register.
  * @return uint8_t Current GPIO state bitmask.
  */
-uint8_t Appnostic_SC16IS7XX::getPortState() {
+uint8_t SC16IS7XX::getPortState() {
     return readRegister(SC16IS7XX_REG_IOSTATE << 3);
 }
 
@@ -354,7 +354,7 @@ uint8_t Appnostic_SC16IS7XX::getPortState() {
  * @brief Set all GPIO direction bits at once.
  * @param mode Bitmask written to the IODIR register.
  */
-void Appnostic_SC16IS7XX::setPortMode(uint8_t mode) {
+void SC16IS7XX::setPortMode(uint8_t mode) {
     writeRegister(SC16IS7XX_REG_IODIR << 3, mode);
 }
 
@@ -362,7 +362,7 @@ void Appnostic_SC16IS7XX::setPortMode(uint8_t mode) {
  * @brief Read all GPIO direction bits from the IODIR register.
  * @return uint8_t Current GPIO direction bitmask.
  */
-uint8_t Appnostic_SC16IS7XX::getPortMode() {
+uint8_t SC16IS7XX::getPortMode() {
     return readRegister(SC16IS7XX_REG_IODIR << 3);
 }
 
@@ -370,7 +370,7 @@ uint8_t Appnostic_SC16IS7XX::getPortMode() {
  * @brief Select which GPIO pin is tied to modem signaling.
  * @param gpio Modem GPIO selection value.
  */
-void Appnostic_SC16IS7XX::setModemPin(modem_gpio_t gpio) {
+void SC16IS7XX::setModemPin(modem_gpio_t gpio) {
     uint8_t tmp_iocontrol;
 
     tmp_iocontrol = readRegister(SC16IS7XX_REG_IOCONTROL << 3);
@@ -386,7 +386,7 @@ void Appnostic_SC16IS7XX::setModemPin(modem_gpio_t gpio) {
  * @brief Enable or disable GPIO state latching.
  * @param enabled True to enable latching, false to disable.
  */
-void Appnostic_SC16IS7XX::setGPIOLatch(bool enabled) {
+void SC16IS7XX::setGPIOLatch(bool enabled) {
     uint8_t tmp_iocontrol;
 
     tmp_iocontrol = readRegister(SC16IS7XX_REG_IOCONTROL << 3);

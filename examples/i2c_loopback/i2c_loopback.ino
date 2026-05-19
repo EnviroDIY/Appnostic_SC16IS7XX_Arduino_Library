@@ -18,12 +18,12 @@
  * ...
  */
 
-#include <Appnostic_SC16IS752.h>
+#include <SC16IS752.h>
 
 int8_t powerPin = -1;
 
-Appnostic_SC16IS752 ExtSerialA(SC16IS752_CHANNEL_A);
-Appnostic_SC16IS752 ExtSerialB(SC16IS752_CHANNEL_B);
+SC16IS752 ExtSerialA(SC16IS752_CHANNEL_A);
+SC16IS752 ExtSerialB(SC16IS752_CHANNEL_B);
 
 int i = 0;
 

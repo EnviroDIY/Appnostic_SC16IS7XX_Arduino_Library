@@ -13,40 +13,39 @@
  *
  * Made with love by the Appnostic team!
  */
-#include "Appnostic_SC16IS752.h"
+#include "SC16IS752.h"
 
 /**
  * @brief constructor for SC16IS752
  * @param channel
  */
-Appnostic_SC16IS752::Appnostic_SC16IS752(uint8_t channel) {
-    Appnostic_SC16IS752::channel   = channel;
-    Appnostic_SC16IS752::peek_flag = 0;
+SC16IS752::SC16IS752(uint8_t channel) {
+    SC16IS752::channel   = channel;
+    SC16IS752::peek_flag = 0;
 }
 
 /**
  * @brief slight modification of the register write function to allow for the
  * separate channels of the SC16IS752
- * @note uses Appnostic_SC16IS7XX::writeRegister
+ * @note uses SC16IS7XX::writeRegister
  * @param channel 0 or 1
  * @param reg_addr the register address to write to
  * @param val the value to write to the register
  */
-void Appnostic_SC16IS752::writeRegister(uint8_t channel, uint8_t reg_addr,
-                                        uint8_t val) {
-    Appnostic_SC16IS7XX::writeRegister((reg_addr << 3 | channel << 1), val);
+void SC16IS752::writeRegister(uint8_t channel, uint8_t reg_addr, uint8_t val) {
+    SC16IS7XX::writeRegister((reg_addr << 3 | channel << 1), val);
 }
 
 /**
  * @brief slight modification of the register read function to allow for the
  * separate channels of the SC16IS752
- * @note uses Appnostic_SC16IS7XX::readRegister
+ * @note uses SC16IS7XX::readRegister
  * @param channel 0 or 1
  * @param reg_addr the register address to read from
  * @return the value read from the register
  */
-uint8_t Appnostic_SC16IS752::readRegister(uint8_t channel, uint8_t reg_addr) {
-    return Appnostic_SC16IS7XX::readRegister((reg_addr << 3 | channel << 1));
+uint8_t SC16IS752::readRegister(uint8_t channel, uint8_t reg_addr) {
+    return SC16IS7XX::readRegister((reg_addr << 3 | channel << 1));
 }
 
 /*** DERIVED FUNCTIONS **********************************************/
@@ -55,7 +54,7 @@ uint8_t Appnostic_SC16IS752::readRegister(uint8_t channel, uint8_t reg_addr) {
  * @brief tests the device to check if it is online
  * @return true if the device is online, false otherwise
  */
-bool Appnostic_SC16IS752::ping() {
+bool SC16IS752::ping() {
     writeRegister(SC16IS752_CHANNEL_A, SC16IS7XX_REG_SPR, 0x55);
 
     if (readRegister(SC16IS752_CHANNEL_A, SC16IS7XX_REG_SPR) == 0x55) {
@@ -89,7 +88,7 @@ bool Appnostic_SC16IS752::ping() {
  * @brief enables fifo buffer
  * @param enabled true to enable FIFO, false to disable
  */
-void Appnostic_SC16IS752::setFIFO(bool enabled) {
+void SC16IS752::setFIFO(bool enabled) {
     settings.fifo = enabled;
 
     uint8_t tmp_fcr;
@@ -109,7 +108,7 @@ void Appnostic_SC16IS752::setFIFO(bool enabled) {
  * @brief resets tx or rx fifo buffer
  * @param rx true to reset RX FIFO, false to reset TX FIFO
  */
-void Appnostic_SC16IS752::resetFIFO(bool rx) {
+void SC16IS752::resetFIFO(bool rx) {
     uint8_t tmp_fcr;
 
     tmp_fcr = readRegister(channel, SC16IS7XX_REG_FCR);
@@ -127,7 +126,7 @@ void Appnostic_SC16IS752::resetFIFO(bool rx) {
  * @param rx True to set RX trigger threshold, false for TX.
  * @param length Trigger threshold value.
  */
-void Appnostic_SC16IS752::setFIFOTriggerLevel(bool rx, uint8_t length) {
+void SC16IS752::setFIFOTriggerLevel(bool rx, uint8_t length) {
     uint8_t tmp_reg;
 
     tmp_reg = readRegister(channel, SC16IS7XX_REG_MCR);
@@ -154,7 +153,7 @@ void Appnostic_SC16IS752::setFIFOTriggerLevel(bool rx, uint8_t length) {
  * @brief sets the baud rate
  * @param baudRate the target baud rate to set
  */
-void Appnostic_SC16IS752::setBaudrate(uint32_t baudRate) {
+void SC16IS752::setBaudrate(uint32_t baudRate) {
     settings.baud = baudRate;
 
     uint16_t divisor;
@@ -189,8 +188,7 @@ void Appnostic_SC16IS752::setBaudrate(uint32_t baudRate) {
  * force '0')
  * @param stopBits the number of stop bits (1 or 2)
  */
-void Appnostic_SC16IS752::setLine(uint8_t bits, uint8_t parity,
-                                  uint8_t stopBits) {
+void SC16IS752::setLine(uint8_t bits, uint8_t parity, uint8_t stopBits) {
     uint8_t tmp_lcr;
 
     settings.bits     = bits;
@@ -237,7 +235,7 @@ void Appnostic_SC16IS752::setLine(uint8_t bits, uint8_t parity,
  * @brief Get number of cached/available bytes in RX FIFO.
  * @return uint8_t Number of available bytes.
  */
-uint8_t Appnostic_SC16IS752::FIFOAvailableData() {
+uint8_t SC16IS752::FIFOAvailableData() {
     if (fifo_available == 0) {
         fifo_available = readRegister(channel, SC16IS7XX_REG_RXLVL);
     }
@@ -248,7 +246,7 @@ uint8_t Appnostic_SC16IS752::FIFOAvailableData() {
  * @brief Get free space in TX FIFO.
  * @return uint8_t Number of available TX FIFO slots.
  */
-uint8_t Appnostic_SC16IS752::FIFOAvailableSpace() {
+uint8_t SC16IS752::FIFOAvailableSpace() {
     return readRegister(channel, SC16IS7XX_REG_TXLVL);
 }
 
@@ -256,7 +254,7 @@ uint8_t Appnostic_SC16IS752::FIFOAvailableSpace() {
  * @brief Read one byte from UART RX FIFO.
  * @return int Byte value, or -1 when no data is available.
  */
-int Appnostic_SC16IS752::read() {
+int SC16IS752::read() {
     volatile uint8_t val;
 
     if (FIFOAvailableData() == 0) {
@@ -272,7 +270,7 @@ int Appnostic_SC16IS752::read() {
  * @brief Return number of bytes waiting in RX FIFO.
  * @return int Number of readable bytes.
  */
-int Appnostic_SC16IS752::available() {
+int SC16IS752::available() {
     return readRegister(channel, SC16IS7XX_REG_RXLVL);
 }
 
@@ -280,7 +278,7 @@ int Appnostic_SC16IS752::available() {
  * @brief Peek one byte from RX FIFO without consuming it.
  * @return int Next byte value, or -1 when no data is available.
  */
-int Appnostic_SC16IS752::peek() {
+int SC16IS752::peek() {
     if (peek_flag == 0) {
         peek_buf = read();
         if (peek_buf >= 0) { peek_flag = 1; }
@@ -294,7 +292,7 @@ int Appnostic_SC16IS752::peek() {
  * @param val Byte to transmit.
  * @return size_t Number of bytes written.
  */
-size_t Appnostic_SC16IS752::write(uint8_t val) {
+size_t SC16IS752::write(uint8_t val) {
     uint8_t tmp_lsr;
 
     do {
@@ -312,7 +310,7 @@ size_t Appnostic_SC16IS752::write(uint8_t val) {
  * @param size Number of bytes to send.
  * @return size_t Number of bytes written.
  */
-size_t Appnostic_SC16IS752::write(const uint8_t* buf, size_t size) {
+size_t SC16IS752::write(const uint8_t* buf, size_t size) {
     for (int i = 0; i < size; i++) { write(buf[i]); }
     return size;
 }
@@ -320,7 +318,7 @@ size_t Appnostic_SC16IS752::write(const uint8_t* buf, size_t size) {
 /**
  * @brief Block until TX shift register is empty.
  */
-void Appnostic_SC16IS752::flush() {
+void SC16IS752::flush() {
     uint8_t tmp_lsr;
 
     do {

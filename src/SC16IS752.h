@@ -3,14 +3,14 @@
 #ifndef _APPNOSTIC_SC16IS752_H_
 #define _APPNOSTIC_SC16IS752_H_
 
-#include "Appnostic_SC16IS7XX.h"
+#include "SC16IS7XX.h"
 
 #define SC16IS752_CHANNEL_A 0x00
 #define SC16IS752_CHANNEL_B 0x01
 #define SC16IS752_CHANNEL_BOTH 0x00
 
 /**
- * @brief UART line and FIFO settings used by Appnostic_SC16IS752.
+ * @brief UART line and FIFO settings used by SC16IS752.
  */
 typedef struct {
     bool    fifo = true;    ///< true to enable FIFO, false to disable
@@ -24,7 +24,7 @@ typedef struct {
 /**
  * @brief SC16IS752 dual-channel UART driver.
  */
-class Appnostic_SC16IS752 : public Appnostic_SC16IS7XX {
+class SC16IS752 : public SC16IS7XX {
  private:
     uart_settings_t settings;
     uint8_t         channel;
@@ -36,7 +36,7 @@ class Appnostic_SC16IS752 : public Appnostic_SC16IS7XX {
     uint8_t FIFOAvailableSpace();
 
  public:
-    Appnostic_SC16IS752(uint8_t channel);
+    SC16IS752(uint8_t channel);
 
     // reading and writing from registers
     void    writeRegister(uint8_t channel, uint8_t reg_addr, uint8_t val);
@@ -66,6 +66,6 @@ class Appnostic_SC16IS752 : public Appnostic_SC16IS7XX {
 /**
  * @brief Default external serial instance.
  */
-extern Appnostic_SC16IS752 ExtSerial;
+extern SC16IS752 ExtSerial;
 
 #endif

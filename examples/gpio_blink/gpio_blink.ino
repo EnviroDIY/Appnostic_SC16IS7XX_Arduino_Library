@@ -9,11 +9,11 @@
  *
  */
 
-#include <Appnostic_SC16IS752.h>
+#include <SC16IS752.h>
 
 int8_t powerPin = -1;
 
-Appnostic_SC16IS752 ExtSerial(SC16IS752_CHANNEL_A);
+SC16IS752 ExtSerial(SC16IS752_CHANNEL_A);
 
 #define GPIO_PIN 0
 
