@@ -6,7 +6,7 @@
  * Connect an external USB SERIAL device to the SC16IS7XX but remember to
  * swap the TXD and RXD.
  *
- * NO8007   USB SERIAL
+ * SC16IS7XX   USB SERIAL
  * ======   ==========
  * GND      GND
  * TXD      RXD

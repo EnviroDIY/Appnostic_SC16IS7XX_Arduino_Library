@@ -48,16 +48,13 @@ void setup() {
     // enable interrupts for the pin
     ExtSerial.setPinInterrupt(GPIO_PIN, true);
 
-    // enable the interrupt controller
-    ExtSerial.enableInterruptControl(true);
-
     pinMode(LED_PIN, OUTPUT);
 }
 
 void loop() {
     if (digitalRead(SC16IS7XX_IRQ_PIN) == LOW) {
         if (ExtSerial.isr() == SC16IS7XX_INT_GPIO) {
-            digitalWrite(9, !ExtSerial.digitalRead(GPIO_PIN));
+            digitalWrite(LED_PIN, !ExtSerial.digitalRead(GPIO_PIN));
         }
     }
     delay(100);

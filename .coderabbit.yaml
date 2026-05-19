@@ -39,8 +39,8 @@ reviews:
         Since this is an Arduino project, never suggest using the standard library (std::).
         For memory savings, prefer defines to const variables, and prefer using the F() macro for string literals longer than a single character.
         Defines should be in the headers.
-        Unique functions, defines, and parameters must be documented with Doxygen comments in the header files.
-        Override functions don't need Doxygen comments in the header files, unless they have unique parameters or behavior that needs to be documented.
+        Doxygen function documentation should be in the cpp implementation files but documentation for classes, structs, enums, defines, and unique parameters should be in the header files.
+        Override functions don't need Doxygen comments, unless they have unique parameters or behavior that needs to be documented.
         Files should be formatted according to the .clang-format file in the repo.
         Don't suggest making getter functions const.
     - path: '**/*.cpp'
@@ -49,7 +49,8 @@ reviews:
         Since this is an Arduino project, never suggest using the standard library (std::).
         For memory savings, prefer defines to const variables, and prefer using the F() macro for string literals longer than a single character.
         Defines should be in the headers.
-        Doxygen documentation should be in the header files.
+        Doxygen function documentation should be in the cpp implementation files but documentation for classes, structs, enums, defines, and unique parameters should be in the header files.
+        Override functions don't need Doxygen comments, unless they have unique parameters or behavior that needs to be documented.
         Files should be formatted according to the .clang-format file in the repo.
         Don't suggest making getter functions const.
   tools:

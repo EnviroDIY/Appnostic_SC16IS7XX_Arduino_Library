@@ -184,12 +184,12 @@ class SC16IS7XX {
     /**
      * @brief Construct a new SC16IS7XX object.
      */
-    SC16IS7XX() {};
+    SC16IS7XX() = default;
 
     /**
      * @brief Destroy the SC16IS7XX object.
      */
-    ~SC16IS7XX() {};
+    ~SC16IS7XX() = default;
 
     // i2c
     bool begin_i2c(uint8_t  addr    = SC16IS7XX_DEFAULT_ADDRESS,
@@ -217,7 +217,6 @@ class SC16IS7XX {
     void enableCTSInterrupt(bool enabled);
     void enableRTSInterrupt(bool enabled);
     void enableXOFFInterrupt(bool enabled);
-    void enableXONInterrupt(bool enabled);
     void enableRLSInterrupt(bool enabled);
     void enableTHRInterrupt(bool enabled);
     void enableRHRInterrupt(bool enabled);

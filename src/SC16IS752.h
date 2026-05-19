@@ -1,8 +1,7 @@
 #pragma once
 
-#ifndef _APPNOSTIC_SC16IS752_H_
-#define _APPNOSTIC_SC16IS752_H_
-
+#ifndef _SC16IS752_H_
+#define _SC16IS752_H_
 #include "SC16IS7XX.h"
 
 #define SC16IS752_CHANNEL_A 0x00

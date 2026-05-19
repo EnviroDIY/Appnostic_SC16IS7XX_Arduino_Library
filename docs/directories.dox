@@ -1,6 +1,6 @@
 /**
  * @dir src
- * @brief Contains the source code for the ANBSensorsModbus library
+ * @brief Contains the source code for the SC16IS7XX library
  */
 /**
  * @dir docs

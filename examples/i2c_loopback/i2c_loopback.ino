@@ -70,6 +70,8 @@ void loop() {
             Serial.println("Error receiving loopback data");
         else
             Serial.println("Loopback data received");
+    } else {
+        Serial.println("No loopback data received");
     }
     delay(1000);
 }
