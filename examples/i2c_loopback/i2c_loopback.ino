@@ -49,14 +49,14 @@ void setup() {
     Serial.println("found!");
 
     // set some parameters
-    ExtSerialA.setFIFO(true);  // enable fifo
+    ExtSerialA.enableFIFO(true);  // enable fifo
     ExtSerialA.setBaudrate(115200);
     ExtSerialA.setLine(8, 0, 1);  // 8,n,1
 
     // instantiate the second channel. There is no need for additional checking
     // here.
     ExtSerialB.begin_i2c();
-    ExtSerialB.setFIFO(true);  // enable fifo
+    ExtSerialB.enableFIFO(true);  // enable fifo
     ExtSerialB.setBaudrate(115200);
     ExtSerialB.setLine(8, 0, 1);  // 8,n,1
 }

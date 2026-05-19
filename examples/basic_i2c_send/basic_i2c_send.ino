@@ -50,7 +50,7 @@ void setup() {
     }
     Serial.println("found!");
 
-    ExtSerial.setFIFO(true);  // enable fifo
+    ExtSerial.enableFIFO(true);  // enable fifo
     ExtSerial.setBaudrate(115200);
     ExtSerial.setLine(8, 0, 1);  // 8,n,1
 }

@@ -9,57 +9,75 @@
 #define SC16IS752_CHANNEL_B 0x01
 #define SC16IS752_CHANNEL_BOTH 0x00
 
-/**
- * @brief UART line and FIFO settings used by SC16IS752.
- */
-typedef struct {
-    bool    fifo = true;    ///< true to enable FIFO, false to disable
-    bool    baud = 115200;  ///< baud rate to set
-    uint8_t bits = 8;       ///< number of data bits (5, 6, 7, or 8)
-    bool parity  = false;   ///< parity mode (0: none, 1: odd, 2: even, 3: force
-                            ///< '1', 4: force '0')
-    uint8_t stopBits = 1;   ///< number of stop bits (1 or 2)
-} uart_settings_t;
+// Define config for Serial.begin(baud, config);
+// Copied from Arduino's HardwareSerial.h for compatibility with
+// Serial.begin(baud, config) style calls
+#define SERIAL_5N1 (0x00)  // 00 00 0 000
+#define SERIAL_6N1 (0x02)  // 00 00 0 010
+#define SERIAL_7N1 (0x04)  // 00 00 0 100
+#define SERIAL_8N1 (0x06)  // 00 00 0 110
+#define SERIAL_5N2 (0x08)  // 00 00 1 000
+#define SERIAL_6N2 (0x0A)  // 00 00 1 010
+#define SERIAL_7N2 (0x0C)  // 00 00 1 100
+#define SERIAL_8N2 (0x0E)  // 00 00 1 110
+#define SERIAL_5E1 (0x20)  // 00 10 0 000
+#define SERIAL_6E1 (0x22)  // 00 10 0 010
+#define SERIAL_7E1 (0x24)  // 00 10 0 100
+#define SERIAL_8E1 (0x26)  // 00 10 0 110
+#define SERIAL_5E2 (0x28)  // 00 10 1 000
+#define SERIAL_6E2 (0x2A)  // 00 10 1 010
+#define SERIAL_7E2 (0x2C)  // 00 10 1 100
+#define SERIAL_8E2 (0x2E)  // 00 10 1 110
+#define SERIAL_5O1 (0x30)  // 00 11 0 000
+#define SERIAL_6O1 (0x32)  // 00 11 0 010
+#define SERIAL_7O1 (0x34)  // 00 11 0 100
+#define SERIAL_8O1 (0x36)  // 00 11 0 110
+#define SERIAL_5O2 (0x38)  // 00 11 1 000
+#define SERIAL_6O2 (0x3A)  // 00 11 1 010
+#define SERIAL_7O2 (0x3C)  // 00 11 1 100
+#define SERIAL_8O2 (0x3E)  // 00 11 1 110
 
 /**
  * @brief SC16IS752 dual-channel UART driver.
  */
 class SC16IS752 : public SC16IS7XX, public Stream {
  private:
-    uart_settings_t settings;
-    uint8_t         channel;
-    uint8_t         peek_flag      = 0;
-    int             peek_buf       = -1;
-    uint8_t         fifo_available = 0;
+    uint8_t _channel;
+    uint8_t _peek_flag = 0;
+    int     _peek_buf  = -1;
 
-    uint8_t FIFOAvailableData();
     uint8_t FIFOAvailableSpace();
 
  public:
     SC16IS752(uint8_t channel);
 
-    // reading and writing from registers
-    void    writeRegister(uint8_t channel, uint8_t reg_addr, uint8_t val);
-    uint8_t readRegister(uint8_t channel, uint8_t reg_addr);
-
-    // derived functions from base class
-    virtual bool ping() override;
-
     // uart configuration
-    void setFIFO(bool enabled);
+    void enableFIFO(bool enabled);
     void resetFIFO(bool rx);
     void setFIFOTriggerLevel(bool rx, uint8_t length);
     void setBaudrate(uint32_t baudRate);
-    void setLine(uint8_t bits, uint8_t parity, uint8_t stopBits);
+    void setLine(uint8_t dataBits, uint8_t parity, uint8_t stopBits);
+    void setLine(uint8_t config);
+
+    // uart begin/end, aligned with HardwareSerial
+    void begin(unsigned long baud) {
+        begin(baud, SERIAL_8N1);
+    }
+    void begin(unsigned long baud, uint8_t config);
+    void begin(unsigned long baud, uint8_t dataBits, uint8_t parity,
+               uint8_t stopBits);
+    void end() {}
 
     // stream reading
     int read();
+    int read(uint8_t* buf, size_t size);
     int available();
     int peek();
 
     // stream writing
-    size_t write(uint8_t val);
     size_t write(const uint8_t* buf, size_t size);
+    size_t write(uint8_t c);
+    size_t write(const char* str);
     void   flush();
 };
 

@@ -19,68 +19,10 @@
  * @brief constructor for SC16IS752
  * @param channel
  */
-SC16IS752::SC16IS752(uint8_t channel) {
-    SC16IS752::channel   = channel;
-    SC16IS752::peek_flag = 0;
-}
-
-/**
- * @brief slight modification of the register write function to allow for the
- * separate channels of the SC16IS752
- * @note uses SC16IS7XX::writeRegister
- * @param channel 0 or 1
- * @param reg_addr the register address to write to
- * @param val the value to write to the register
- */
-void SC16IS752::writeRegister(uint8_t channel, uint8_t reg_addr, uint8_t val) {
-    SC16IS7XX::writeRegister((reg_addr << 3 | channel << 1), val);
-}
-
-/**
- * @brief slight modification of the register read function to allow for the
- * separate channels of the SC16IS752
- * @note uses SC16IS7XX::readRegister
- * @param channel 0 or 1
- * @param reg_addr the register address to read from
- * @return the value read from the register
- */
-uint8_t SC16IS752::readRegister(uint8_t channel, uint8_t reg_addr) {
-    return SC16IS7XX::readRegister((reg_addr << 3 | channel << 1));
-}
-
-/*** DERIVED FUNCTIONS **********************************************/
-
-/**
- * @brief tests the device to check if it is online
- * @return true if the device is online, false otherwise
- */
-bool SC16IS752::ping() {
-    writeRegister(SC16IS752_CHANNEL_A, SC16IS7XX_REG_SPR, 0x55);
-
-    if (readRegister(SC16IS752_CHANNEL_A, SC16IS7XX_REG_SPR) == 0x55) {
-        return true;
-    }
-
-    writeRegister(SC16IS752_CHANNEL_A, SC16IS7XX_REG_SPR, 0xAA);
-
-    if (readRegister(SC16IS752_CHANNEL_A, SC16IS7XX_REG_SPR) == 0xAA) {
-        return true;
-    }
-
-    writeRegister(SC16IS752_CHANNEL_B, SC16IS7XX_REG_SPR, 0x55);
-
-    if (readRegister(SC16IS752_CHANNEL_B, SC16IS7XX_REG_SPR) == 0x55) {
-        return true;
-    }
-
-    writeRegister(SC16IS752_CHANNEL_B, SC16IS7XX_REG_SPR, 0xAA);
-
-    if (readRegister(SC16IS752_CHANNEL_B, SC16IS7XX_REG_SPR) == 0xAA) {
-        return true;
-    }
-
-    return false;
-}
+SC16IS752::SC16IS752(uint8_t channel)
+    : _channel(channel),
+      _peek_flag(0),
+      _peek_buf(-1) {}
 
 /*** UART CONFIGURATION *****************************************/
 
@@ -88,20 +30,11 @@ bool SC16IS752::ping() {
  * @brief enables fifo buffer
  * @param enabled true to enable FIFO, false to disable
  */
-void SC16IS752::setFIFO(bool enabled) {
-    settings.fifo = enabled;
-
-    uint8_t tmp_fcr;
-
-    tmp_fcr = readRegister(channel, SC16IS7XX_REG_FCR);
-
-    if (enabled == false) {
-        tmp_fcr &= 0xFE;
-    } else {
-        tmp_fcr |= 0x01;
-    }
-
-    writeRegister(channel, SC16IS7XX_REG_FCR, tmp_fcr);
+void SC16IS752::enableFIFO(bool enabled) {
+    Adafruit_BusIO_Register     FCR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                    (SC16IS7XX_REG_SPR << 3 | _channel << 1));
+    Adafruit_BusIO_RegisterBits enable_bit(&FCR, 1, 0);
+    enable_bit.write(enabled);
 }
 
 /**
@@ -109,16 +42,11 @@ void SC16IS752::setFIFO(bool enabled) {
  * @param rx true to reset RX FIFO, false to reset TX FIFO
  */
 void SC16IS752::resetFIFO(bool rx) {
-    uint8_t tmp_fcr;
-
-    tmp_fcr = readRegister(channel, SC16IS7XX_REG_FCR);
-
-    if (rx == false) {
-        tmp_fcr |= 0x04;
-    } else {
-        tmp_fcr |= 0x02;
-    }
-    writeRegister(channel, SC16IS7XX_REG_FCR, tmp_fcr);
+    Adafruit_BusIO_Register FCR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                (SC16IS7XX_REG_SPR << 3 | _channel << 1));
+    // reset bit for rx fifo is bit 1, for tx fifo is bit 2
+    Adafruit_BusIO_RegisterBits reset_bit(&FCR, 1, rx ? 1 : 2);
+    reset_bit.write(true);
 }
 
 /**
@@ -127,58 +55,108 @@ void SC16IS752::resetFIFO(bool rx) {
  * @param length Trigger threshold value.
  */
 void SC16IS752::setFIFOTriggerLevel(bool rx, uint8_t length) {
-    uint8_t tmp_reg;
+    // the TX FIFO, the TCR (Transmission Control Register), and the TLR
+    // (Trigger Level Register) are considered to be enhanced functions, so we
+    // need to set EFR[4] to '1' to be able to write to and use trigger level
+    // interrupts.
+    Adafruit_BusIO_Register     EFR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                    (SC16IS7XX_REG_EFR << 3 | _channel << 1));
+    Adafruit_BusIO_RegisterBits enable_bit_e(&EFR, 1, 4);
+    enable_bit_e.write(true);
 
-    tmp_reg = readRegister(channel, SC16IS7XX_REG_MCR);
-    tmp_reg |= 0x04;
-    writeRegister(channel, SC16IS7XX_REG_MCR,
-                  tmp_reg);  // SET MCR[2] to '1' to use TLR register or trigger
-                             // level control in FCR register
+    // Enable TCR and TLR registers by setting modem control register bit 2
+    // (MCR[2]) to '1'
+    Adafruit_BusIO_Register     MCR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                    (SC16IS7XX_REG_MCR << 3 | _channel << 1));
+    Adafruit_BusIO_RegisterBits enable_bit(&MCR, 1, 2);
+    enable_bit.write(true);
 
-    tmp_reg = readRegister(channel, SC16IS7XX_REG_EFR);
-    writeRegister(channel, SC16IS7XX_REG_EFR,
-                  tmp_reg |
-                      0x10);  // set ERF[4] to '1' to use the  enhanced features
-    if (rx == false) {
-        writeRegister(channel, SC16IS7XX_REG_TLR,
-                      length << 4);  // Tx FIFO trigger level setting
-    } else {
-        writeRegister(channel, SC16IS7XX_REG_TLR,
-                      length);  // Rx FIFO Trigger level setting
-    }
-    writeRegister(channel, SC16IS7XX_REG_EFR, tmp_reg);  // restore EFR register
+    // set the length of the FIFO trigger level. The length bits for the RX FIFO
+    // trigger are in bits 7:4 and the length bits for the TX FIFO trigger are
+    // in bits 3:0 of the TLR (Trigger Level Register). The higher bit is the
+    // MSB (ie, MSB_FIRST).
+    Adafruit_BusIO_Register     TLR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                    (SC16IS7XX_REG_TLR << 3 | _channel << 1));
+    Adafruit_BusIO_RegisterBits length_bits(&TLR, 4, rx ? 4 : 0);
+    length_bits.write(length);
+
+    // reset the enable bit for enhanced functions back to '0' to prevent
+    // unintended consequences of leaving it enabled
+    enable_bit_e.write(false);
+
+#if 0
+    Adafruit_BusIO_Register FCR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                (SC16IS7XX_REG_FCR << 3 | _channel << 1));
+    // length bits for rx fifo are in bits 7:6, for tx fifo are in bits 5:4
+    // in both cases, the higher bit is the MSB (ie, MSB_FIRST)
+    Adafruit_BusIO_RegisterBits length_bits(&FCR, 2, rx ? 6 : 4);
+    length_bits.write(length);
+#endif
 }
 
 /**
  * @brief sets the baud rate
  * @param baudRate the target baud rate to set
+ *
+ * The output frequency of the baud rate generator is determined by the
+ * following formula: Baudrate = (Crystal Frequency / Prescaler) / (16 *
+ * Divisor)
  */
 void SC16IS752::setBaudrate(uint32_t baudRate) {
-    settings.baud = baudRate;
-
     uint16_t divisor;
     uint8_t  prescaler;
-    uint8_t  tmp_lcr;
 
-    if ((readRegister(channel, SC16IS7XX_REG_MCR) & 0x80) == 0) {
-        prescaler = 1;
-    } else {
+    // check if the device has sleep mode enabled.
+    // the divisor cannot be changed while sleep mode is enabled, so we need to
+    // check the current state before attempting to change the baud rate and if
+    // sleep mode is enabled, we need to temporarily disable it to change the
+    // baud rate and then re-enable it if it was previously enabled.
+    bool sleep_enabled = isSleepEnabled();
+    if (sleep_enabled) { enableSleepMode(false); }
+
+    // The maximum divisor is 0xFFFF, so if the calculated divisor is greater
+    // than that, we need to use a prescaler to divide the input clock to the
+    // baud rate generator and then calculate the divisor based on the divided
+    // clock. The prescaler can be set to divide the clock by 1 or 4 using the
+    // MCR[7] bit.
+
+    // calculate the divisor assuming no prescaler (prescaler = 1)
+    prescaler = 1;
+    divisor   = (getCrystalFrequency() / prescaler) / (baudRate * 16);
+
+    if (divisor > 0xFFFF) {
+        // if the divisor is too large, set the prescaler to divide the clock by
+        // 4 and recalculate the divisor
         prescaler = 4;
+        divisor   = (getCrystalFrequency() / prescaler) / (baudRate * 16);
     }
 
-    divisor = (getCrystalFrequency() / prescaler) / (baudRate * 16);
+    // set the initial clock divisor (prescaler) value from the MCR[7] bit
+    Adafruit_BusIO_Register     MCR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                    (SC16IS7XX_REG_MCR << 3 | _channel << 1));
+    Adafruit_BusIO_RegisterBits prescaler_bit(&MCR, 1, 7);
+    prescaler_bit.write(prescaler == 4 ? 1 : 0);
 
-    tmp_lcr = readRegister(channel, SC16IS7XX_REG_LCR);
-    tmp_lcr |= 0x80;
-    writeRegister(channel, SC16IS7XX_REG_LCR, tmp_lcr);
+    // enable the divisor latch
+    Adafruit_BusIO_Register     LCR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                    (SC16IS7XX_REG_LCR << 3 | _channel << 1));
+    Adafruit_BusIO_RegisterBits latch_enable(&LCR, 1, 7);
+    latch_enable.write(true);
 
     // write to DLL
-    writeRegister(channel, SC16IS7XX_REG_DLL, (uint8_t)divisor);
-
+    Adafruit_BusIO_Register DLL(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                (SC16IS7XX_REG_DLL << 3 | _channel << 1));
+    DLL.write((uint8_t)divisor);
     // write to DLH
-    writeRegister(channel, SC16IS7XX_REG_DLH, (uint8_t)(divisor >> 8));
-    tmp_lcr &= 0x7F;
-    writeRegister(channel, SC16IS7XX_REG_LCR, tmp_lcr);
+    Adafruit_BusIO_Register DLH(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                (SC16IS7XX_REG_DLH << 3 | _channel << 1));
+    DLH.write((uint8_t)(divisor >> 8));
+
+    // disable the divisor latch
+    latch_enable.write(false);
+
+    // re-enable sleep mode if it was previously enabled
+    if (sleep_enabled) { enableSleepMode(true); }
 }
 
 /**
@@ -188,18 +166,22 @@ void SC16IS752::setBaudrate(uint32_t baudRate) {
  * force '0')
  * @param stopBits the number of stop bits (1 or 2)
  */
-void SC16IS752::setLine(uint8_t bits, uint8_t parity, uint8_t stopBits) {
-    uint8_t tmp_lcr;
+void SC16IS752::setLine(uint8_t dataBits, uint8_t parity, uint8_t stopBits) {
+    Adafruit_BusIO_Register LCR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                (SC16IS7XX_REG_LCR << 3 | _channel << 1));
 
-    settings.bits     = bits;
-    settings.parity   = parity;
-    settings.stopBits = stopBits;
-
-    tmp_lcr = readRegister(channel, SC16IS7XX_REG_LCR);
+    uint8_t tmp_lcr = LCR.read();
     tmp_lcr &= 0xC0;  // Clear the lower six bit of LCR (LCR[0] to LCR[5]
 
     // data bit length
-    switch (settings.bits) {
+    // LCR[0:1]
+    // | LCR[1] | LCR[0] | Data Bits        |
+    // |--------|--------|------------------|
+    // | 0      | 0      | 5 bits           |
+    // | 0      | 1      | 6 bits           |
+    // | 1      | 0      | 7 bits           |
+    // | 1      | 1      | 8 bits           |
+    switch (dataBits) {
         case 5: break;
         case 6: tmp_lcr |= 0x01; break;
         case 7: tmp_lcr |= 0x02; break;
@@ -208,9 +190,19 @@ void SC16IS752::setLine(uint8_t bits, uint8_t parity, uint8_t stopBits) {
     }
 
     // stop bits
-    if (settings.stopBits == 2) { tmp_lcr |= 0x04; }
+    // LCR[2] - 0: 1 stop bit, 1: 1.5 stop bits (when data bits = 5) or 2 stop
+    // bits
+    if (stopBits == 2) { tmp_lcr |= 0x04; }
 
     // parity
+    // LCR[5:3]
+    // | LCR[5] | LCR[4] | LCR[3] | Parity Mode       |
+    // |--------|--------|--------|-------------------|
+    // | x      | x      | 0      | No parity        |
+    // | 0      | 0      | 1      | odd parity       |
+    // | 0      | 1      | 1      | even parity      |
+    // | 1      | 0      | 1      | force '1' parity |
+    // | 1      | 1      | 1      | force '0' parity |
     switch (parity) {
         case 0:  // no parity
             break;
@@ -221,25 +213,79 @@ void SC16IS752::setLine(uint8_t bits, uint8_t parity, uint8_t stopBits) {
             tmp_lcr |= 0x18;
             break;
         case 3:  // force '1' parity
-            tmp_lcr |= 0x03;
+            tmp_lcr |= 0x28;
             break;
         case 4:  // force '0' parity
+            tmp_lcr |= 0x38;
             break;
         default: break;
     }
 
-    writeRegister(channel, SC16IS7XX_REG_LCR, tmp_lcr);
+    LCR.write(tmp_lcr);
+}
+
+
+/**
+ * @brief Set line parameters using a pre-defined config value, aligned with
+ * Arduino HardwareSerial config values (eg, SERIAL_8N1).
+ *
+ * @param config the configuration value encoding the data bits, parity, and
+ * stop bits
+ */
+void SC16IS752::setLine(uint8_t config) {
+    uint8_t dataBits = 8;
+    uint8_t parity   = 0;
+    uint8_t stopBits = 1;
+
+    // extract data bits from config (bits 0:2)
+    switch (config & 0x07) {
+        case 0x00: dataBits = 5; break;
+        case 0x02: dataBits = 6; break;
+        case 0x04: dataBits = 7; break;
+        case 0x06: dataBits = 8; break;
+        default: dataBits = 8; break;
+    }
+
+    // extract stop bits from config (bit 4)
+    if (config & 0x10) { stopBits = 2; }
+
+    // extract parity from config (bits 5:6)
+    switch (config & 0x60) {
+        case 0x00: parity = 0; break;  // no parity
+        case 0x20: parity = 2; break;  // even parity
+        case 0x30: parity = 1; break;  // odd parity
+        default: parity = 0; break;    // default to no parity
+    }
+
+    setLine(dataBits, parity, stopBits);
 }
 
 /**
- * @brief Get number of cached/available bytes in RX FIFO.
- * @return uint8_t Number of available bytes.
+ * @brief Begin UART communication with specified baud rate and configuration,
+ * aligned with Arduino HardwareSerial begin() method.
+ *
+ * @param baud The baud rate to set for UART communication.
+ * @param config The configuration value encoding the data bits, parity, and
+ * stop bits, aligned with Arduino HardwareSerial config values (eg,
+ * SERIAL_8N1).
  */
-uint8_t SC16IS752::FIFOAvailableData() {
-    if (fifo_available == 0) {
-        fifo_available = readRegister(channel, SC16IS7XX_REG_RXLVL);
-    }
-    return fifo_available;
+void SC16IS752::begin(unsigned long baud, uint8_t config) {
+    setBaudrate(baud);
+    setLine(config);
+}
+/**
+ * @brief Begin UART communication with specified baud rate and configuration
+ *
+ * @param baud The baud rate to set for UART communication.
+ * @param bits the number of data bits (5, 6, 7, or 8)
+ * @param parity the parity mode (0: none, 1: odd, 2: even, 3: force '1', 4:
+ * force '0')
+ * @param stopBits the number of stop bits (1 or 2)
+ */
+void SC16IS752::begin(unsigned long baud, uint8_t dataBits, uint8_t parity,
+                      uint8_t stopBits) {
+    setBaudrate(baud);
+    setLine(dataBits, parity, stopBits);
 }
 
 /**
@@ -247,7 +293,9 @@ uint8_t SC16IS752::FIFOAvailableData() {
  * @return uint8_t Number of available TX FIFO slots.
  */
 uint8_t SC16IS752::FIFOAvailableSpace() {
-    return readRegister(channel, SC16IS7XX_REG_TXLVL);
+    Adafruit_BusIO_Register TXLVL(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                  (SC16IS7XX_REG_TXLVL << 3 | _channel << 1));
+    return TXLVL.read();
 }
 
 /**
@@ -255,15 +303,15 @@ uint8_t SC16IS752::FIFOAvailableSpace() {
  * @return int Byte value, or -1 when no data is available.
  */
 int SC16IS752::read() {
-    volatile uint8_t val;
+    Adafruit_BusIO_Register RHR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                (SC16IS7XX_REG_RHR << 3 | _channel << 1));
+    return RHR.read();
+}
 
-    if (FIFOAvailableData() == 0) {
-        return -1;
-    } else {
-        if (fifo_available > 0) { --fifo_available; }
-        val = readRegister(channel, SC16IS7XX_REG_RHR);
-        return val;
-    }
+int SC16IS752::read(uint8_t* buf, size_t size) {
+    Adafruit_BusIO_Register RHR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                (SC16IS7XX_REG_RHR << 3 | _channel << 1));
+    return RHR.read(buf, size);
 }
 
 /**
@@ -271,7 +319,9 @@ int SC16IS752::read() {
  * @return int Number of readable bytes.
  */
 int SC16IS752::available() {
-    return readRegister(channel, SC16IS7XX_REG_RXLVL);
+    Adafruit_BusIO_Register RXLVL(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                  (SC16IS7XX_REG_RXLVL << 3 | _channel << 1));
+    return RXLVL.read();
 }
 
 /**
@@ -288,23 +338,6 @@ int SC16IS752::peek() {
 }
 
 /**
- * @brief Write one byte to UART TX register.
- * @param val Byte to transmit.
- * @return size_t Number of bytes written.
- */
-size_t SC16IS752::write(uint8_t val) {
-    uint8_t tmp_lsr;
-
-    do {
-        tmp_lsr = readRegister(channel, SC16IS7XX_REG_LSR);
-    } while ((tmp_lsr & 0x20) == 0);
-
-    writeRegister(channel, SC16IS7XX_REG_THR, val);
-
-    return 1;
-}
-
-/**
  * @brief Write a buffer to UART.
  * @param buf Pointer to bytes to transmit.
  * @param size Number of bytes to send.
@@ -313,15 +346,64 @@ size_t SC16IS752::write(uint8_t val) {
 size_t SC16IS752::write(const uint8_t* buf, size_t size) {
     for (int i = 0; i < size; i++) { write(buf[i]); }
     return size;
+
+    // Pointer to where in the buffer we're up to
+    // A const cast is need to cast-away the constant-ness of the buffer (ie,
+    // modify it).
+    uint8_t* txPtr     = const_cast<uint8_t*>(buf);
+    size_t   bytesSent = 0;
+
+    do {
+        // check how much space is available in the TX FIFO
+        size_t space = FIFOAvailableSpace();
+        // Number of bytes to send from buffer in this command, equal to the
+        // number of spaces available in the TX FIFO or the number of bytes
+        // remaining in the buffer, whichever is smaller. We use a chunked
+        // approach to sending the buffer to ensure that we don't attempt to
+        // write more bytes than are available in the TX FIFO and to ensure that
+        // we don't read past the end of the buffer.
+        size_t sendLength = space;
+        // Ensure the program doesn't read past the allocated memory
+        if (txPtr + space > const_cast<uint8_t*>(buf) + size) {
+            sendLength = const_cast<uint8_t*>(buf) + size - txPtr;
+        }
+        // write out the number of bytes for this chunk
+        Adafruit_BusIO_Register THR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                    (SC16IS7XX_REG_THR << 3 | _channel << 1));
+        THR.write(txPtr, sendLength);
+        bytesSent += sendLength;  // bump up number of bytes sent
+        txPtr += sendLength;      // bump up the pointer
+    } while (bytesSent < size);
+    return bytesSent;
+}
+
+/**
+ * @brief Write one byte to UART TX register.
+ * @param val Byte to transmit.
+ * @return size_t Number of bytes written.
+ */
+size_t SC16IS752::write(uint8_t c) {
+    return write(&c, 1);
+}
+/**
+ * @brief Write a null-terminated string to UART.
+ *
+ * @param str Pointer to the null-terminated string to transmit.
+ * @return size_t Number of bytes written.
+ */
+size_t SC16IS752::write(const char* str) {
+    if (str == nullptr) return 0;
+    return write((const uint8_t*)str, strlen(str));
 }
 
 /**
  * @brief Block until TX shift register is empty.
  */
 void SC16IS752::flush() {
-    uint8_t tmp_lsr;
-
-    do {
-        tmp_lsr = readRegister(channel, SC16IS7XX_REG_LSR);
-    } while ((tmp_lsr & 0x20) == 0);
+    Adafruit_BusIO_Register     LSR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                    (SC16IS7XX_REG_LSR << 3 | _channel << 1));
+    Adafruit_BusIO_RegisterBits thr_empty_bit(&LSR, 1, 7);
+    while (!thr_empty_bit.read()) {
+        // do nothing, just wait
+    }
 }

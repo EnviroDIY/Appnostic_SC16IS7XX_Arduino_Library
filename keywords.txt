@@ -9,7 +9,7 @@ readRegister	KEYWORD2
 resetFIFO	KEYWORD2
 setBaudrate	KEYWORD2
 enableFIFO	KEYWORD2
-enableFIFOTriggerLevel	KEYWORD2
+setFIFOTriggerLevel	KEYWORD2
 setLine	KEYWORD2
 write	KEYWORD2
 writeRegister	KEYWORD2
