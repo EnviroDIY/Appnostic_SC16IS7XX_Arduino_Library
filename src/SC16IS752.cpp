@@ -32,7 +32,7 @@ SC16IS752::SC16IS752(uint8_t channel)
  */
 void SC16IS752::enableFIFO(bool enabled) {
     Adafruit_BusIO_Register     FCR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
-                                    (SC16IS7XX_REG_SPR << 3 | _channel << 1));
+                                    (SC16IS7XX_REG_FCR << 3 | _channel << 1));
     Adafruit_BusIO_RegisterBits enable_bit(&FCR, 1, 0);
     enable_bit.write(enabled);
 }
@@ -43,7 +43,7 @@ void SC16IS752::enableFIFO(bool enabled) {
  */
 void SC16IS752::resetFIFO(bool rx) {
     Adafruit_BusIO_Register FCR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
-                                (SC16IS7XX_REG_SPR << 3 | _channel << 1));
+                                (SC16IS7XX_REG_FCR << 3 | _channel << 1));
     // reset bit for rx fifo is bit 1, for tx fifo is bit 2
     Adafruit_BusIO_RegisterBits reset_bit(&FCR, 1, rx ? 1 : 2);
     reset_bit.write(true);
@@ -402,9 +402,6 @@ int SC16IS752::peek() {
  * @return size_t Number of bytes written.
  */
 size_t SC16IS752::write(const uint8_t* buf, size_t size) {
-    for (int i = 0; i < size; i++) { write(buf[i]); }
-    return size;
-
     // Pointer to where in the buffer we're up to
     // A const cast is need to cast-away the constant-ness of the buffer (ie,
     // modify it).
