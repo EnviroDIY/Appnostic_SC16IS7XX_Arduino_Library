@@ -112,16 +112,28 @@
 #define SC16IS7XX_REG_XOFF2 (0X07)  ///< XOFF2 Register
 
 // Interrupt Enable Register Bits
+
+// NOTE:
+// - Enabling any of the MODEM, RLS, THR, or RHR interrupts put the module
+// into "Interrupt Mode Operation".  In this mode, the host is informted of the
+// status of the rx and tx via the interrupt signal (the IRQ pin) and should
+// check the IIR register for the source of the interrupt.
+// - If you do NOT enable any of the MODEM, RLS, THR, or RHR interrupts, then
+// the module is in "Polling Mode Operation" and the host should check the LSR
+// and MSR registers to check the status of the rx and tx.
+// - Enabling the CTS, RTS, or XOFF interrupts does NOT put the module into
+// "Interrupt Mode Operation". The host should check the IIR register for the
+// source of the interrupt if any of these are enabled, but they can be enabled
+// in either mode of operation.
+
 // Taken from datasheet table 11
 #define SC16IS7XX_IER_CTS (0X07)    ///< CTS Interrupt Enable
 #define SC16IS7XX_IER_RTS (0X06)    ///< RTS Interrupt Enable
 #define SC16IS7XX_IER_XOFF (0X05)   ///< XOFF Interrupt
-#define SC16IS7XX_IER_SLEEP (0X04)  ///< Sleep Interrupt
+#define SC16IS7XX_IER_SLEEP (0X04)  ///< Sleep Mode Enable (NOT AN INTERRUPT)
 #define SC16IS7XX_IER_MODEM (0X03)  ///< Modem Interrupt
-// NOTE: The modem interrupt is triggered by changes in the RI, CD, or DSR pins
-// **if** the I/O pins are configured as modem pins The modem interrupt is also
-// triggered by changes in the GPIO pins **if** the I/O pins are configured as
-// GPIO pins
+// NOTE: The modem interrupt is triggered by changes in the RI, CD/DTR, or DSR
+// pins **if** the I/O pins are configured as modem pins.
 #define SC16IS7XX_IER_RLS (0X02)  ///< Receiver Line Status Interrupt
 #define SC16IS7XX_IER_THR (0X01)  ///< Transmit Holding Register Interrupt
 #define SC16IS7XX_IER_RHR (0X00)  ///< Receive Holding Register Interrupt
@@ -206,7 +218,6 @@ class SC16IS7XX {
     void enableRTSInterrupt(bool enabled);
     void enableXOFFInterrupt(bool enabled);
     void enableXONInterrupt(bool enabled);
-    void enableModemInterrupt(bool enabled);
     void enableRLSInterrupt(bool enabled);
     void enableTHRInterrupt(bool enabled);
     void enableRHRInterrupt(bool enabled);

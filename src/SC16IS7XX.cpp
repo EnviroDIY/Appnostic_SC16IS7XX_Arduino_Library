@@ -255,6 +255,10 @@ bool SC16IS7XX::isSleepEnabled() {
 /**
  * @brief sets the interrupt enable register to enable CTS interrupts
  * @param enabled true enables interrupts, false disables them
+ *
+ * The CTS interrupt (IIR = 0bxx100000 = 0x20) is triggered when the state of
+ * the CTS pin changes. The CTS interrupt is cleared by reading the IIR register
+ * or by a change in the state of the CTS pin.
  */
 void SC16IS7XX::enableCTSInterrupt(bool enabled) {
     Adafruit_BusIO_Register     IER(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
@@ -266,6 +270,10 @@ void SC16IS7XX::enableCTSInterrupt(bool enabled) {
 /**
  * @brief sets the interrupt enable register to enable RTS interrupts
  * @param enabled true enables interrupts, false disables them
+ *
+ * The RTS interrupt (IIR = 0bxx100000 = 0x20) is triggered when the state of
+ * the RTS pin changes. The RTS interrupt is cleared by reading the IIR register
+ * or by a change in the state of the RTS pin.
  */
 void SC16IS7XX::enableRTSInterrupt(bool enabled) {
     Adafruit_BusIO_Register     IER(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
@@ -277,6 +285,10 @@ void SC16IS7XX::enableRTSInterrupt(bool enabled) {
 /**
  * @brief sets the interrupt enable register to enable XOFF interrupts
  * @param enabled true enables interrupts, false disables them
+ *
+ * The XOFF interrupt (IIR = 0bxx10000 = 0x10) is triggered when the XOFF
+ * character is received on the serial input. The XOFF interrupt is cleared by
+ * reading the IIR register or when an XON character is received.
  */
 void SC16IS7XX::enableXOFFInterrupt(bool enabled) {
     Adafruit_BusIO_Register     IER(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
@@ -286,21 +298,13 @@ void SC16IS7XX::enableXOFFInterrupt(bool enabled) {
 }
 
 /**
- * @brief sets the interrupt enable register to enable modem/pin change
- * interrupts
- * @param enabled true enables interrupts, false disables them
- */
-void SC16IS7XX::enableModemInterrupt(bool enabled) {
-    Adafruit_BusIO_Register     IER(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
-                                    SC16IS7XX_REG_IER << 3);
-    Adafruit_BusIO_RegisterBits modem(&IER, 1, SC16IS7XX_IER_MODEM);
-    modem.write(enabled);
-}
-
-/**
  * @brief sets the interrupt enable register to enable receive line status
  * interrupts
  * @param enabled true enables interrupts, false disables them
+ *
+ * Triggered when Overrun Error (OE), Framing Error (FE), Parity Error (PE), or
+ * Break Interrupt (BI) errors occur in characters in the RX FIFO.  Cleared when
+ * all characters with errors have be read from the Rx FIFO.
  */
 void SC16IS7XX::enableRLSInterrupt(bool enabled) {
     Adafruit_BusIO_Register     IER(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
@@ -313,6 +317,16 @@ void SC16IS7XX::enableRLSInterrupt(bool enabled) {
  * @brief sets the interrupt enable register to enable transmit holding register
  * interrupts
  * @param enabled true enables interrupts, false disables them
+ *
+ * If the transmit FIFO is disabled, the THR interrupt (IIR[1]) is triggered
+ * when the transmit FIFO is empty.
+ *
+ * If the transmit FIFO is enabled, the THR interrupt is triggered when the
+ * number of bytes in the TX FIFO is greater than  to the value in the trigger
+ * level register.
+ *
+ * The THR interrupt is cleared when enough data has been sent on the Tx line to
+ * bring the number of bytes in the TX FIFO below the trigger level.
  */
 void SC16IS7XX::enableTHRInterrupt(bool enabled) {
     Adafruit_BusIO_Register     IER(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
@@ -325,6 +339,15 @@ void SC16IS7XX::enableTHRInterrupt(bool enabled) {
  * @brief sets the interrupt enable register to enable receive holding register
  * interrupts
  * @param enabled true enables interrupts, false disables them
+ *
+ * If the receive FIFO is disabled, the RHR interrupt (IIR[2]) is triggered when
+ * a byte of data is received and placed in the RHR register.
+ *
+ * If the receive FIFO is enabled, the RHR interrupt (IIR[4]) is triggered when
+ * the number of bytes in the RX FIFO reaches the trigger level.
+ *
+ * The RHR interrupt is cleared by reading the RX FIFO (that is, the RHR
+ * register).
  */
 void SC16IS7XX::enableRHRInterrupt(bool enabled) {
     Adafruit_BusIO_Register     IER(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
@@ -338,6 +361,22 @@ void SC16IS7XX::enableRHRInterrupt(bool enabled) {
  * state change
  * @param pin the pin to configure an interrupt on
  * @param enabled true enables the interrupt, false disables it
+ *
+ * The I/O pin interrupt (IIR = 0bxx110000 = 0x30) is triggered when there is a
+ * change in the state of an I/O pin with interrupts enabled in the IOIntEna
+ * register.
+ *
+ * The I/O interrupt clear depends on the interrupt latching configuration.
+ *  - If interrupt latching is not enabled, the I/O interrupt is cleared by
+ * reading the IIR register or by a change in the state of the pin that
+ * triggered the interrupt.
+ *  - If interrupt latching is enabled, the modem interrupt is cleared by
+ * reading the IOState register.
+ *
+ * The I/O interrupt only works if the pin is configured to be an I/O pin and
+ * not a modem pin in the IOControl register. Pins 0-3 are controlled by bit 2
+ * of the IOControl register, while pins 4-7 are controlled by bit 1. Therefore,
+ * to enable an interrupt.
  */
 void SC16IS7XX::setPinInterrupt(uint8_t pin, bool enabled) {
     if (pin > 7) {

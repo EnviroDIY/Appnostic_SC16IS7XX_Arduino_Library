@@ -260,6 +260,43 @@ void SC16IS752::setLine(uint8_t config) {
     setLine(dataBits, parity, stopBits);
 }
 
+void SC16IS752::enableFlowControl(bool enabled) {
+    // set the pin controls to modem pins to enable hardware flow control and to
+    // GPIO pins to disable hardware flow control.
+    // For channel 0/A GPIO[7:4] emulate RIA, CDA, DTRA, DSRA
+    // For channel 1/B GPIO[3:0] emulate RIB, CDB, DTRB, DSRB
+    Adafruit_BusIO_Register IOControl(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                      SC16IS7XX_REG_IOCONTROL << 3);
+    //   pins 0-3 are controlled by bit 2, pins 4-7 are controlled by bit 1
+    Adafruit_BusIO_RegisterBits modem_pin_bit(&IOControl, 1,
+                                              _channel > 0 ? 1 : 2);
+    modem_pin_bit.write(enabled ? 1 : 0);
+}
+
+/**
+ * @brief sets the interrupt enable register to enable modem/pin change
+ * interrupts
+ * @param enabled true enables interrupts, false disables them
+ *
+ * The modem interrupt (IIR = 0bxx000000 = 0x00) is triggered when there is a
+ * change in the state of the modem input pins (CD, DSR, DTR, RI). The modem
+ * interrupt is cleared by reading the MSR register or the IIR register.
+ *
+ * The modem interrupt only works if the pin is configured to be a modem pin and
+ * not an I/O pin in the IOControl register. Pins 0-3 apply to channel 1/B and
+ * are controlled by bit 2 of the IOControl register, while pins 4-7 apply to
+ * channel 0/A and are controlled by bit 1.
+ */
+void SC16IS752::enableModemInterrupt(bool enabled) {
+    // Modem interrupts only work when flow control is enabled, so enable flow
+    // control to enable modem interrupts.
+    if (enabled) { enableFlowControl(true); }
+    Adafruit_BusIO_Register     IER(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                    SC16IS7XX_REG_IER << 3);
+    Adafruit_BusIO_RegisterBits modem(&IER, 1, SC16IS7XX_IER_MODEM);
+    modem.write(enabled);
+}
+
 /**
  * @brief Begin UART communication with specified baud rate and configuration,
  * aligned with Arduino HardwareSerial begin() method.
@@ -428,3 +465,5 @@ void SC16IS752::flush() {
         // do nothing, just wait
     }
 }
+
+// cSpell:words SPIFREQ SPIREG MISO MOSI DTRA DSRA DTRB DSRB
