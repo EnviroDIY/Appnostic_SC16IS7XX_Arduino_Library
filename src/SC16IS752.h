@@ -24,7 +24,7 @@ typedef struct {
 /**
  * @brief SC16IS752 dual-channel UART driver.
  */
-class SC16IS752 : public SC16IS7XX {
+class SC16IS752 : public SC16IS7XX, public Stream {
  private:
     uart_settings_t settings;
     uint8_t         channel;

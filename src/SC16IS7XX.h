@@ -154,7 +154,7 @@
 /**
  * @brief Base driver for SC16IS7XX family devices using I2C or SPI.
  */
-class SC16IS7XX : public Stream {
+class SC16IS7XX {
  private:
     uint8_t  device_protocol   = SC16IS7XX_PROTOCOL_I2C;
     uint8_t  device_address    = SC16IS7XX_ADDRESS_AA;
@@ -185,46 +185,6 @@ class SC16IS7XX : public Stream {
      * @brief Destroy the SC16IS7XX object.
      */
     ~SC16IS7XX() {};
-
-    /**
-     * @brief Read one byte from the stream.
-     * @return int Byte value, or -1 when no data is available.
-     */
-    virtual int read();
-
-    /**
-     * @brief Get number of bytes available for reading.
-     * @return int Number of bytes available.
-     */
-    virtual int available();
-
-    /**
-     * @brief Peek the next byte without consuming it.
-     * @return int Next byte value, or -1 when no data is available.
-     */
-    virtual int peek();
-    // virtual String readStringUntil(char terminator);
-
-    /**
-     * @brief Write a single byte to the stream.
-     * @param val Byte value to write.
-     * @return size_t Number of bytes written.
-     */
-    virtual size_t write(uint8_t val);
-
-    /**
-     * @brief Write multiple bytes to the stream.
-     * @param buf Pointer to source buffer.
-     * @param size Number of bytes to write.
-     * @return size_t Number of bytes written.
-     */
-    virtual size_t write(const uint8_t* buf, size_t size);
-    using Print::write;  // write(str) and write(buf, size)
-
-    /**
-     * @brief Block until transmit operations are complete.
-     */
-    virtual void flush();
 
     // i2c
     bool begin_i2c(uint8_t addr);
