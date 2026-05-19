@@ -22,7 +22,6 @@ digitalWrite	KEYWORD2
 enableInterruptControl	KEYWORD2
 flush	KEYWORD2
 getCrystalFrequency	KEYWORD2
-getLastInterruptPin	KEYWORD2
 getPinInterrupt	KEYWORD2
 getPortMode	KEYWORD2
 getPortState	KEYWORD2

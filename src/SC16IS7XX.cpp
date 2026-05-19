@@ -411,16 +411,6 @@ uint8_t SC16IS7XX::getPinInterrupt(uint8_t pin) {
 }
 
 /**
- * @brief Gets the last pin to trigger an interrupt.
- * @warning This doesn't seem to be possible on this device, so this function is
- * not implemented and will always return -1.
- * @return the last pin that triggered an interrupt, or -1 if none
- */
-int SC16IS7XX::getLastInterruptPin() {
-    return -1;
-}
-
-/**
  * @brief used to determine interrupt source. it should really be fleshed out
  * better with callbacks.
  * @return the interrupt source as indicated by the interrupt identification

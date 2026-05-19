@@ -224,7 +224,6 @@ class SC16IS7XX {
 
     void    setPinInterrupt(uint8_t pin, bool enabled);
     uint8_t getPinInterrupt(uint8_t pin);
-    int     getLastInterruptPin();
     uint8_t isr();
     void    setPortState(uint8_t state);
     uint8_t getPortState();
