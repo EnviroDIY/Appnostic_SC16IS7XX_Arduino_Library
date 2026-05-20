@@ -759,7 +759,7 @@ void SC16IS752::begin(unsigned long baud, uint8_t dataBits, uint8_t parity,
  * @param baud The baud rate to set for UART communication.
  */
 void SC16IS752::begin(unsigned long baud) {
-    begin(baud, SERIAL_8N1);
+    begin(baud, SC16IS7XX_SERIAL_8N1);
 }
 
 /**
