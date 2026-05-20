@@ -54,7 +54,7 @@ PROJECT_NUMBER         = 2.0.0
 # for a project that appears at the top of each page and should give viewers a
 # quick idea about the purpose of the project. Keep the description short.
 
-PROJECT_BRIEF          = "Arduino Library for SC16IS750, SC16IS751 and SC16IS752 I2C and SPI UART interfaces"
+PROJECT_BRIEF          = "Arduino Library for SC16IS752 and SC16IS762 I2C and SPI UART interfaces"
 
 # With the PROJECT_LOGO tag one can specify a logo or an icon that is included
 # in the documentation. The maximum height of the logo should not exceed 55

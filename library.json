@@ -1,8 +1,8 @@
 {
-  "name": "EnviroDIY SC16IS7XX",
+  "name": "SC16IS7XX",
   "version": "2.0.0",
-  "description": "Arduino Library for SC16IS7XX I2C and SPI UART interfaces",
-  "keywords": "EnviroDIY, SC16IS7XX, I2C, SPI, UART, SC16IS750, SC16IS751, SC16IS752",
+  "description": "Arduino Library for SC16IS752 and SC16IS762 I2C and SPI UART interfaces.",
+  "keywords": "EnviroDIY, SC16IS7XX, I2C, SPI, UART, SC16IS752, SC16IS762",
   "platforms": "*",
   "frameworks": "arduino",
   "authors": [

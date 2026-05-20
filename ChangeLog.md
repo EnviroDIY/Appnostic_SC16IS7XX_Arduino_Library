@@ -33,7 +33,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
-- Fixed peek by re-implementing read functions as they were initially written by @TD-er
+- Fixed peek by re-implementing read functions as they were initially written by [TD-er](https://github.com/TD-er/SC16IS752)
 
 ***
 
