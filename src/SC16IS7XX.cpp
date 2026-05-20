@@ -10,6 +10,9 @@
 
 #include "SC16IS7XX.h"
 
+// Pointer to active SC16IS7XX object
+SC16IS7XX* SC16IS7XX::_activeObject = nullptr;
+
 /*** CONFIG *******************************************************/
 
 /**
@@ -100,6 +103,10 @@ bool SC16IS7XX::begin_i2c(uint8_t addr, TwoWire* theWire) {
         return false;
     }
 
+    // set this as the active object for interrupt handling before we initialize
+    // the I2C
+    if (_activeObject != this) { _activeObject = this; }
+
     if (i2c_dev) delete i2c_dev;
     if (spi_dev) delete spi_dev;
     spi_dev = nullptr;
@@ -124,6 +131,10 @@ bool SC16IS7XX::begin_i2c(uint8_t addr, TwoWire* theWire) {
  */
 bool SC16IS7XX::begin_SPI(uint8_t cs_pin, SPIClass* theSPI,
                           uint32_t frequency) {
+    // set this as the active object for interrupt handling before we initialize
+    // the SPI
+    if (_activeObject != this) { _activeObject = this; }
+
     if (i2c_dev) delete i2c_dev;
     if (spi_dev) delete spi_dev;
     i2c_dev = nullptr;
@@ -150,6 +161,10 @@ bool SC16IS7XX::begin_SPI(uint8_t cs_pin, SPIClass* theSPI,
  */
 bool SC16IS7XX::begin_SPI(int8_t cs_pin, int8_t sck_pin, int8_t miso_pin,
                           int8_t mosi_pin, uint32_t frequency) {
+    // set this as the active object for interrupt handling before we initialize
+    // the SPI
+    if (_activeObject != this) { _activeObject = this; }
+
     if (i2c_dev) delete i2c_dev;
     if (spi_dev) delete spi_dev;
     i2c_dev = nullptr;
@@ -162,6 +177,14 @@ bool SC16IS7XX::begin_SPI(int8_t cs_pin, int8_t sck_pin, int8_t miso_pin,
     if (!spi_dev->begin()) { return false; }
 
     return _init();
+}
+
+/**
+ * @brief Ends the current SC16IS7XX session by setting the active object
+ * pointer to null.
+ */
+void SC16IS7XX::end() {
+    if (this == _activeObject) { _activeObject = nullptr; }
 }
 
 
@@ -472,6 +495,19 @@ void SC16IS7XX::detachInterrupt(uint8_t pin) {
     // clear the callback for the interrupt
     clearCallback(callbackMask);
 }
+
+/**
+ * @brief Checks if any interrupts are pending by reading the IIR register.
+ * @return True if an interrupt is pending, false otherwise.
+ */
+bool SC16IS7XX::getInterruptStatus() {
+    Adafruit_BusIO_Register     IIR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                    SC16IS7XX_REG_IIR << 3);
+    Adafruit_BusIO_RegisterBits pending_bit(&IIR, 1, 0);
+    return pending_bit.read();  // Check the interrupt pending bit
+}
+
+
 /**
  * @brief Get a bitmask representing the source of the interrupt that can be
  * used to find the appropriate callback in the list of callbacks.
@@ -547,9 +583,14 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
     return callbackMask;
 }
 /**
- * @brief Interrupt Handler
+ * @brief The actual ISR that is called when an interrupt occurs.
+ *
+ * It gets the source of the interrupt and calls the appropriate callback
+ * function if it is found in the list of callbacks.
+ *
+ * On Espressif boards (ESP8266 and ESP32), the ISR must be stored in IRAM
  */
-void SC16IS7XX::interruptHandler(void) {
+void ISR_MEM_ACCESS SC16IS7XX::__isr(void) {
     uint16_t callbackMask = getInterruptSource();
 
     // find the position of the interrupt in the our list of callbacks
@@ -559,6 +600,16 @@ void SC16IS7XX::interruptHandler(void) {
     }
     // Call the callback function if found
     if (current < nints && ISRcallback[current]) { ISRcallback[current](); }
+}
+
+/**
+ * @brief Intermediary used by the ISR - passes off responsibility for the
+ * interrupt to the active object.
+ *
+ * On Espressif boards (ESP8266 and ESP32), the ISR must be stored in IRAM
+ */
+void ISR_MEM_ACCESS SC16IS7XX::handleInterrupt() {
+    if (_activeObject) _activeObject->__isr();
 }
 
 // cSpell:words SPIFREQ SPIREG MISO MOSI

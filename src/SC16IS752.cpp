@@ -731,6 +731,7 @@ void SC16IS752::detachTimeoutInterrupt() {
  * SERIAL_8N1).
  */
 void SC16IS752::begin(unsigned long baud, uint8_t config) {
+    if (_activeObject != this) { _activeObject = this; }
     setBaudrate(baud);
     setLine(config);
 }
@@ -745,6 +746,7 @@ void SC16IS752::begin(unsigned long baud, uint8_t config) {
  */
 void SC16IS752::begin(unsigned long baud, uint8_t dataBits, uint8_t parity,
                       uint8_t stopBits) {
+    if (_activeObject != this) { _activeObject = this; }
     setBaudrate(baud);
     setLine(dataBits, parity, stopBits);
 }

@@ -22,6 +22,19 @@
 #include <Adafruit_I2CDevice.h>
 #include <Adafruit_SPIDevice.h>
 
+/**
+ * @def ISR_MEM_ACCESS
+ * @brief Defines a memory access location, if needed for the interrupts service
+ * routines.
+ *
+ * On Espressif boards (ESP8266 and ESP32), the ISR must be stored in IRAM
+ */
+#if (defined(ESP32) || defined(ESP8266)) && !defined(ISR_MEM_ACCESS)
+#define ISR_MEM_ACCESS IRAM_ATTR
+#else
+#define ISR_MEM_ACCESS
+#endif  // defined(ESP32) || defined(ESP8266)
+
 
 /**
  * @anchor chip_features
@@ -362,6 +375,8 @@ class SC16IS7XX {
 
     void storeCallback(uint16_t callbackMask, voidFxnPtr callback);
     void clearCallback(uint16_t callbackMask);
+    // static pointer to active SC16IS7XX instance, needed for easy ISR handling
+    static SC16IS7XX* _activeObject;
 
  public:
     /**
@@ -384,6 +399,10 @@ class SC16IS7XX {
     bool begin_SPI(int8_t cs_pin, int8_t sck_pin, int8_t miso_pin,
                    int8_t   mosi_pin,
                    uint32_t frequency = SC16IS7XX_DEFAULT_SPIFREQ);
+
+    // Need an end function to switch between active objects for the interrupt
+    // handling.
+    void end();
 
     // configuration
     void     setCrystalFrequency(uint32_t frequency);
@@ -410,8 +429,10 @@ class SC16IS7XX {
     void attachInterrupt(uint8_t pin, voidFxnPtr callback, uint8_t = 0);
     void detachInterrupt(uint8_t pin);
 
-    void     interruptHandler(void);
-    uint16_t getInterruptSource();
+    bool        getInterruptStatus();
+    uint16_t    getInterruptSource();
+    void        __isr(void);
+    static void handleInterrupt(void);
 };
 
 #endif  // _SC16IS7XX_H_

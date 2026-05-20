@@ -22,7 +22,10 @@ int8_t powerPin = -1;
 
 SC16IS752 ExtSerial(SC16IS752_CHANNEL_A);
 
+
+// The GPIO pin on the SC16IS7XX to use for the interrupt test
 #define GPIO_PIN 0
+// The pin on the Arduino to which the SC16IS7XX IRQ pin is connected
 #define SC16IS7XX_IRQ_PIN 3
 
 bool interrupted = false;
@@ -54,29 +57,27 @@ void setup() {
     }
     Serial.println("found!");
 
-    // set the pin mode
-    ExtSerial.pinMode(GPIO_PIN, INPUT);
+    // attach an interrupt to the pin on the expander
+    ExtSerial.attachInterrupt(GPIO_PIN, onInterrupt);
 
-    // enable interrupts for the pin
-    ExtSerial.setPinInterrupt(GPIO_PIN, true);
-
-    // enable the interrupt controller
-    ExtSerial.enableInterruptControl(true);
-
-    pinMode(SC16IS7XX_IRQ_PIN, INPUT);  // no pull required
+// set the pin mode for the pin on the Arduino connected to the IRQ pin and
+// attach the interrupt handler to it. The interrupt handler will be called when
+// the IRQ pin goes low, which indicates that an interrupt has been triggered on
+// the SC16IS7XX. The interrupt handler will then find the source of the
+// interrupt and call the correct callback for it.
+#if defined(digitalPinToInterrupt)
     attachInterrupt(digitalPinToInterrupt(SC16IS7XX_IRQ_PIN), onInterrupt,
                     FALLING);  // interrupt transitions from high to low
+#else
+    attachInterrupt(SC16IS7XX_IRQ_PIN, SC16IS7XX::handleInterrupt,
+                    FALLING);  // interrupt transitions from high to low
+#endif
 }
 
 void loop() {
     if (interrupted == true) {
         interrupted = false;
-        if (ExtSerial.isr() == SC16IS7XX_INT_GPIO) {
-            Serial.print("Interrupt Pin: ");
-            Serial.print(GPIO_PIN);
-            Serial.print(", State: ");
-            Serial.println(ExtSerial.digitalRead(GPIO_PIN));
-        }
+        Serial.println("Interrupt received!");
     }
     delay(100);
 }
