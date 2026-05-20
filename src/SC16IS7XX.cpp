@@ -89,7 +89,7 @@ bool SC16IS7XX::_init() {
  * address is between 0x48 and 0x57, it is used directly. Otherwise, it is right
  * shifted by one bit and used as the address. This allows for both 7-bit and
  * 8-bit address formats to be used.  If nothing is supplied, the default
- * address of #SC16IS7XX_DEFAULT_ADDRESS is used.
+ * address of #SC16IS7XX_DEFAULT_ADDRESS() is used.
     @param  theWire Optional parameter for the I2C device we will use. Default
    is "Wire"
  * @return true if the device was successfully initialized, false otherwise
@@ -380,6 +380,9 @@ void SC16IS7XX::setGPIOLatch(bool enabled) {
  * @brief Specifies a named Interrupt Service Routine (ISR) to call when a
  * pin-change interrupt occurs. Replaces any previous function that was attached
  * to the interrupt.
+ * @param callbackMask a bitmask representing the interrupt to attach the
+ * callback to.
+ * @param callback the function to call when the interrupt occurs
  */
 void SC16IS7XX::storeCallback(uint16_t callbackMask, voidFxnPtr callback) {
     // Store the interrupt callback.
@@ -411,6 +414,8 @@ void SC16IS7XX::storeCallback(uint16_t callbackMask, voidFxnPtr callback) {
 
 /**
  * @brief Turns off the given interrupt.
+ * @param callbackMask a bitmask representing the interrupt to detach the
+ * callback from.
  */
 void SC16IS7XX::clearCallback(uint16_t callbackMask) {
     // Remove callback from the ISR list
@@ -420,7 +425,7 @@ void SC16IS7XX::clearCallback(uint16_t callbackMask) {
     }
     if (current == nints) return;  // We didn't have it
 
-    // Shift the reminder down
+    // Shift the remainder down
     for (; current < nints - 1; current++) {
         ISRlist[current]     = ISRlist[current + 1];
         ISRcallback[current] = ISRcallback[current + 1];
@@ -433,6 +438,12 @@ void SC16IS7XX::clearCallback(uint16_t callbackMask) {
  * @brief Specifies a named Interrupt Service Routine (ISR) to call when a
  * pin-change interrupt occurs. Replaces any previous function that was attached
  * to the interrupt.
+ * @param pin the pin number on the port expander (0 - 7)
+ * @param callback the function to call when the interrupt occurs
+ * @warning The SC16IS7XX family of devices only supports pin change interrupts
+ * and does not support pull-up or pull-down resistors, so anything put in the
+ * mode parameter will be ignored. The interrupt will be triggered on any change
+ * of the pin state.
  */
 void SC16IS7XX::attachInterrupt(uint8_t pin, voidFxnPtr callback, uint8_t) {
     if (!(0 <= pin && pin <= 7)) {
@@ -453,6 +464,7 @@ void SC16IS7XX::attachInterrupt(uint8_t pin, voidFxnPtr callback, uint8_t) {
 
 /**
  * @brief Turns off the given interrupt.
+ * @param pin the pin number on the port expander (0 - 7)
  */
 void SC16IS7XX::detachInterrupt(uint8_t pin) {
     if (!(0 <= pin && pin <= 7)) {
@@ -471,7 +483,12 @@ void SC16IS7XX::detachInterrupt(uint8_t pin) {
     clearCallback(callbackMask);
 }
 /**
- * @brief Interrupt Handler
+ * @brief Get a bitmask representing the source of the interrupt that can be
+ * used to find the appropriate callback in the list of callbacks.
+ * @return A bitmask representing the source of the interrupt. The upper byte
+ * contains the IIR source, while the lower byte contains additional information
+ * about the source (e.g. which pin triggered a GPIO interrupt or the delta bits
+ * for a modem interrupt).
  */
 uint16_t SC16IS7XX::getInterruptSource(void) {
     // Calling the routine directly from -here- takes about 1us

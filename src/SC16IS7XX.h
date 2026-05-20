@@ -387,7 +387,7 @@ class SC16IS7XX {
 
     void setGPIOLatch(bool enabled);
 
-    void attachInterrupt(uint8_t pin, voidFxnPtr callback, uint8_t);
+    void attachInterrupt(uint8_t pin, voidFxnPtr callback, uint8_t = 0);
     void detachInterrupt(uint8_t pin);
 
     void     interruptHandler(void);

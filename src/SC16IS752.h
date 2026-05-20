@@ -108,12 +108,12 @@ class SC16IS752 : public SC16IS7XX, public Stream {
     void detachTimeoutInterrupt();
 
     // uart begin/end, aligned with HardwareSerial
-    void begin(unsigned long baud) {
-        begin(baud, SERIAL_8N1);
-    }
+    void begin(unsigned long baud);
     void begin(unsigned long baud, uint8_t config);
     void begin(unsigned long baud, uint8_t dataBits, uint8_t parity,
                uint8_t stopBits);
+    /// @brief  End UART communication. This function is provided for API
+    /// compatibility with HardwareSerial, but does not do anything.
     void end() {}
 
     // stream reading

@@ -161,7 +161,7 @@ void SC16IS752::setBaudrate(uint32_t baudRate) {
 
 /**
  * @brief sets the line parameters
- * @param bits the number of data bits (5, 6, 7, or 8)
+ * @param dataBits the number of data bits (5, 6, 7, or 8)
  * @param parity the parity mode (0: none, 1: odd, 2: even, 3: force '1', 4:
  * force '0')
  * @param stopBits the number of stop bits (1 or 2)
@@ -260,6 +260,11 @@ void SC16IS752::setLine(uint8_t config) {
     setLine(dataBits, parity, stopBits);
 }
 
+/**
+ * @brief Enable or disable hardware flow control by setting the pin control
+ *
+ * @param enabled true to enable hardware flow control, false to disable
+ */
 void SC16IS752::enableFlowControl(bool enabled) {
     // set the pin controls to modem pins to enable hardware flow control and to
     // GPIO pins to disable hardware flow control.
@@ -738,7 +743,7 @@ void SC16IS752::begin(unsigned long baud, uint8_t config) {
  * @brief Begin UART communication with specified baud rate and configuration
  *
  * @param baud The baud rate to set for UART communication.
- * @param bits the number of data bits (5, 6, 7, or 8)
+ * @param dataBits the number of data bits (5, 6, 7, or 8)
  * @param parity the parity mode (0: none, 1: odd, 2: even, 3: force '1', 4:
  * force '0')
  * @param stopBits the number of stop bits (1 or 2)
@@ -747,6 +752,17 @@ void SC16IS752::begin(unsigned long baud, uint8_t dataBits, uint8_t parity,
                       uint8_t stopBits) {
     setBaudrate(baud);
     setLine(dataBits, parity, stopBits);
+}
+
+/**
+ * @brief Begin UART communication with specified baud rate and default
+ * configuration of 8 data bits, no parity, and 1 stop bit (8N1), aligned with
+ * Arduino HardwareSerial begin() method.
+ *
+ * @param baud The baud rate to set for UART communication.
+ */
+void SC16IS752::begin(unsigned long baud) {
+    begin(baud, SERIAL_8N1);
 }
 
 /**
@@ -775,6 +791,11 @@ int SC16IS752::rawRead(uint8_t* buf, size_t size) {
     return RHR.read(buf, size);
 }
 
+/**
+ * @brief Read one byte from UART RX FIFO, with support for peeked byte.
+ *
+ * @return int Byte value, or -1 when no data is available.
+ */
 int SC16IS752::read() {
     // if there's a peeked byte, return that instead of reading from the FIFO
     if (_peek_flag) {
@@ -785,6 +806,14 @@ int SC16IS752::read() {
     return rawRead();
 }
 
+/**
+ * @brief Read multiple bytes from UART RX FIFO into provided buffer, with
+ * support for peeked byte.
+ *
+ * @param buf The buffer to read bytes into.
+ * @param size The maximum number of bytes to read into the buffer.
+ * @return The number of bytes read, or -1 if no data is available.
+ */
 int SC16IS752::read(uint8_t* buf, size_t size) {
     // if there's a peeked byte, place that in the first position of the buffer
     // and read the rest from the FIFO
@@ -858,7 +887,7 @@ size_t SC16IS752::write(const uint8_t* buf, size_t size) {
 
 /**
  * @brief Write one byte to UART TX register.
- * @param val Byte to transmit.
+ * @param c Byte to transmit.
  * @return size_t Number of bytes written.
  */
 size_t SC16IS752::write(uint8_t c) {
