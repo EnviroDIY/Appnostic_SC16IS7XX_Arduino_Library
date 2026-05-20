@@ -401,6 +401,325 @@ void SC16IS752::enableRHRInterrupt(bool enabled) {
     rhr.write(enabled);
 }
 
+// RI - ring indicator
+/**
+ * @brief Enable the RI (Ring Indicator) interrupt and attach a callback
+ * function to be called when the RI interrupt is triggered.
+ *
+ * RI (Ring Indicator) signals that an incoming call or alert condition is
+ * present on the connected modem or communications line.
+ *
+ * @param callback The function to execute when the RI interrupt is triggered.
+ * This function should take no parameters and return void.
+ */
+void SC16IS752::attachRIInterrupt(voidFxnPtr callback) {
+    // enable the modem interrupt
+    enableModemInterrupt(true);
+    // store the callback
+    storeCallback(SC16IS7XX_INT_MASK_RI, callback);
+}
+/**
+ * @brief Disable the RI (Ring Indicator) interrupt callback.
+ *
+ * Clears the stored callback for the RI interrupt. The shared modem interrupt
+ * remains enabled for any other modem interrupt sources still in use.
+ */
+void SC16IS752::detachRIInterrupt() {
+    // NOTE: We don't disable the modem interrupt here because the modem
+    // interrupt may be shared by multiple sources and we don't want to disable
+    // it if other sources are still in use.
+    // clear the callback for the interrupt
+    clearCallback(SC16IS7XX_INT_MASK_RI);
+}
+
+// CD - carrier detect (aka Data Carrier Detect (DCD))
+/**
+ * @brief Enable the CD (Carrier Detect) interrupt and attach a callback
+ * function to be called when the CD interrupt is triggered.
+ *
+ * CD (Carrier Detect), also called DCD, indicates that a valid carrier signal
+ * from the remote device has been detected.
+ *
+ * @param callback The function to execute when the CD interrupt is triggered.
+ * This function should take no parameters and return void.
+ */
+void SC16IS752::attachCDInterrupt(voidFxnPtr callback) {
+    // enable the modem interrupt
+    enableModemInterrupt(true);
+    // store the callback
+    storeCallback(SC16IS7XX_INT_MASK_CD, callback);
+}
+/**
+ * @brief Disable the CD (Carrier Detect) interrupt callback.
+ *
+ * Clears the stored callback for the CD interrupt. The shared modem interrupt
+ * remains enabled for any other modem interrupt sources still in use.
+ */
+void SC16IS752::detachCDInterrupt() {
+    // NOTE: We don't disable the modem interrupt here because the modem
+    // interrupt may be shared by multiple sources and we don't want to disable
+    // it if other sources are still in use.
+    // clear the callback for the interrupt
+    clearCallback(SC16IS7XX_INT_MASK_CD);
+}
+
+// DSR - data set ready
+/**
+ * @brief Enable the DSR (Data Set Ready) interrupt and attach a callback
+ * function to be called when the DSR interrupt is triggered.
+ *
+ * DSR (Data Set Ready) – Sent by the Data Communication Equipment (DCE) (e.g.,
+ * modem) to the Data Terminal Equipment (DTE) (e.g., computer) to indicate it
+ * is operational and ready to receive data
+ *
+ * @param callback The function to execute when the DSR interrupt is triggered.
+ * This function should take no parameters and return void.
+ */
+void SC16IS752::attachDSRInterrupt(voidFxnPtr callback) {
+    // enable the modem interrupt
+    enableModemInterrupt(true);
+    // store the callback
+    storeCallback(SC16IS7XX_INT_MASK_DSR, callback);
+}
+/**
+ * @brief Disable the DSR (Data Set Ready) interrupt callback.
+ *
+ * Clears the stored callback for the DSR interrupt. The shared modem interrupt
+ * remains enabled for any other modem interrupt sources still in use.
+ */
+void SC16IS752::detachDSRInterrupt() {
+    // NOTE: We don't disable the modem interrupt here because the modem
+    // interrupt may be shared by multiple sources and we don't want to disable
+    // it if other sources are still in use.
+    // clear the callback for the interrupt
+    clearCallback(SC16IS7XX_INT_MASK_DSR);
+}
+
+// DTR - data terminal ready
+/**
+ * @brief Enable the DTR (Data Terminal Ready) interrupt and attach a callback
+ * function to be called when the DTR interrupt is triggered.
+ *
+ * DTR (Data Terminal Ready) is asserted by the Data Terminal Equipment (DTE)
+ * to indicate that it is powered, ready, and able to communicate.
+ *
+ * @param callback The function to execute when the DTR interrupt is triggered.
+ * This function should take no parameters and return void.
+ */
+void SC16IS752::attachDTRInterrupt(voidFxnPtr callback) {
+    // enable the modem interrupt
+    enableModemInterrupt(true);
+    // store the callback
+    storeCallback(SC16IS7XX_INT_MASK_DTR, callback);
+}
+/**
+ * @brief Disable the DTR (Data Terminal Ready) interrupt callback.
+ *
+ * Clears the stored callback for the DTR interrupt. The shared modem interrupt
+ * remains enabled for any other modem interrupt sources still in use.
+ */
+void SC16IS752::detachDTRInterrupt() {
+    // NOTE: We don't disable the modem interrupt here because the modem
+    // interrupt may be shared by multiple sources and we don't want to disable
+    // it if other sources are still in use.
+    // clear the callback for the interrupt
+    clearCallback(SC16IS7XX_INT_MASK_DTR);
+}
+
+/**
+ * @brief Enable the CTS (Clear To Send) interrupt and attach a callback
+ * function to be called when the CTS interrupt is triggered.
+ *
+ * CTS (Clear To Send) is a hardware flow-control signal indicating that the
+ * connected device is ready to receive transmitted data.
+ *
+ * @param callback The function to execute when the CTS interrupt is triggered.
+ * This function should take no parameters and return void.
+ */
+void SC16IS752::attachCTSInterrupt(voidFxnPtr callback) {
+    // enable the CTS interrupt
+    enableCTSInterrupt(true);
+    // store the callback
+    storeCallback(SC16IS7XX_INT_MASK_CTS, callback);
+}
+/**
+ * @brief Disable the CTS (Clear To Send) interrupt callback.
+ *
+ * Disables the CTS interrupt source and clears the stored callback.
+ */
+void SC16IS752::detachCTSInterrupt() {
+    // disable the CTS interrupt
+    enableCTSInterrupt(false);
+    // clear the callback for the interrupt
+    clearCallback(SC16IS7XX_INT_MASK_CTS);
+}
+
+/**
+ * @brief Enable the RTS (Request To Send) interrupt and attach a callback
+ * function to be called when the RTS interrupt is triggered.
+ *
+ * RTS (Request To Send) is a hardware flow-control signal used to indicate
+ * transmit readiness between connected devices.
+ *
+ * @param callback The function to execute when the RTS interrupt is triggered.
+ * This function should take no parameters and return void.
+ */
+void SC16IS752::attachRTSInterrupt(voidFxnPtr callback) {
+    // enable the RTS interrupt
+    enableRTSInterrupt(true);
+    // store the callback
+    storeCallback(SC16IS7XX_INT_MASK_RTS, callback);
+}
+/**
+ * @brief Disable the RTS (Request To Send) interrupt callback.
+ *
+ * Disables the RTS interrupt source and clears the stored callback.
+ */
+void SC16IS752::detachRTSInterrupt() {
+    // disable the RTS interrupt
+    enableRTSInterrupt(false);
+    // clear the callback for the interrupt
+    clearCallback(SC16IS7XX_INT_MASK_RTS);
+}
+
+/**
+ * @brief Enable the XOFF interrupt and attach a callback function to be called
+ * when the XOFF interrupt is triggered.
+ *
+ * The XOFF interrupt is used with software flow control to signal that the
+ * remote device has requested transmission to pause.
+ *
+ * @param callback The function to execute when the XOFF interrupt is
+ * triggered. This function should take no parameters and return void.
+ */
+void SC16IS752::attachXOFFInterrupt(voidFxnPtr callback) {
+    // enable the XOFF interrupt
+    enableXOFFInterrupt(true);
+    // store the callback
+    storeCallback(SC16IS7XX_INT_MASK_XOFF, callback);
+}
+/**
+ * @brief Disable the XOFF interrupt callback.
+ *
+ * Disables the XOFF interrupt source and clears the stored callback.
+ */
+void SC16IS752::detachXOFFInterrupt() {
+    // disable the XOFF interrupt
+    enableXOFFInterrupt(false);
+    // clear the callback for the interrupt
+    clearCallback(SC16IS7XX_INT_MASK_XOFF);
+}
+
+/**
+ * @brief Enable the RLS (Receiver Line Status) interrupt and attach a callback
+ * function to be called when the RLS interrupt is triggered.
+ *
+ * The RLS interrupt reports UART line-status conditions such as overrun,
+ * parity, framing, and break errors.
+ *
+ * @param callback The function to execute when the RLS interrupt is triggered.
+ * This function should take no parameters and return void.
+ */
+void SC16IS752::attachRLSInterrupt(voidFxnPtr callback) {
+    // enable the RLS interrupt
+    enableRLSInterrupt(true);
+    // store the callback
+    storeCallback(SC16IS7XX_INT_MASK_RLS, callback);
+}
+/**
+ * @brief Disable the RLS (Receiver Line Status) interrupt callback.
+ *
+ * Disables the RLS interrupt source and clears the stored callback.
+ */
+void SC16IS752::detachRLSInterrupt() {
+    // disable the RLS interrupt
+    enableRLSInterrupt(false);
+    // clear the callback for the interrupt
+    clearCallback(SC16IS7XX_INT_MASK_RLS);
+}
+
+/**
+ * @brief Enable the THR (Transmit Holding Register) interrupt and attach a
+ * callback function to be called when the THR interrupt is triggered.
+ *
+ * The THR interrupt indicates that the transmit holding register is ready to
+ * accept additional data for transmission.
+ *
+ * @param callback The function to execute when the THR interrupt is triggered.
+ * This function should take no parameters and return void.
+ */
+void SC16IS752::attachTHRInterrupt(voidFxnPtr callback) {
+    // enable the THR interrupt
+    enableTHRInterrupt(true);
+    // store the callback
+    storeCallback(SC16IS7XX_INT_MASK_THR, callback);
+}
+/**
+ * @brief Disable the THR (Transmit Holding Register) interrupt callback.
+ *
+ * Disables the THR interrupt source and clears the stored callback.
+ */
+void SC16IS752::detachTHRInterrupt() {
+    // disable the THR interrupt
+    enableTHRInterrupt(false);
+    // clear the callback for the interrupt
+    clearCallback(SC16IS7XX_INT_MASK_THR);
+}
+
+/**
+ * @brief Enable the RHR (Receive Holding Register) interrupt and attach a
+ * callback function to be called when the RHR interrupt is triggered.
+ *
+ * The RHR interrupt indicates that received data is available in the receive
+ * holding register and ready to be read.
+ *
+ * @param callback The function to execute when the RHR interrupt is triggered.
+ * This function should take no parameters and return void.
+ */
+void SC16IS752::attachRHRInterrupt(voidFxnPtr callback) {
+    // enable the RHR interrupt
+    enableRHRInterrupt(true);
+    // store the callback
+    storeCallback(SC16IS7XX_INT_MASK_RHR, callback);
+}
+/**
+ * @brief Disable the RHR (Receive Holding Register) interrupt callback.
+ *
+ * Disables the RHR interrupt source and clears the stored callback.
+ */
+void SC16IS752::detachRHRInterrupt() {
+    // disable the RHR interrupt
+    enableRHRInterrupt(false);
+    // clear the callback for the interrupt
+    clearCallback(SC16IS7XX_INT_MASK_RHR);
+}
+
+/**
+ * @brief Attach a callback function for the timeout interrupt.
+ *
+ * The timeout interrupt occurs when received data remains unread in the FIFO
+ * for longer than the programmed timeout period. This interrupt does not have
+ * a separate enable function in this library.
+ *
+ * @param callback The function to execute when the timeout interrupt is
+ * triggered. This function should take no parameters and return void.
+ */
+void SC16IS752::attachTimeoutInterrupt(voidFxnPtr callback) {
+    // this interrupt doesn't have an enable function
+    // store the callback
+    storeCallback(SC16IS7XX_INT_MASK_TIMEOUT, callback);
+}
+/**
+ * @brief Detach the timeout interrupt callback.
+ *
+ * Clears the stored callback for the timeout interrupt. This interrupt does
+ * not have a separate enable function in this library.
+ */
+void SC16IS752::detachTimeoutInterrupt() {
+    // this interrupt doesn't have an enable function
+    // clear the callback for the interrupt
+    clearCallback(SC16IS7XX_INT_MASK_TIMEOUT);
+}
 
 /**
  * @brief Begin UART communication with specified baud rate and configuration,
@@ -567,5 +886,6 @@ void SC16IS752::flush() {
         // do nothing, just wait
     }
 }
+
 
 // cSpell:words SPIFREQ SPIREG MISO MOSI DTRA DSRA DTRB DSRB

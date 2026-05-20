@@ -140,6 +140,28 @@
 
 
 /**
+ * @anchor msr_bits
+ * @name Modem Status Register Bits
+ *
+ * Taken from datasheet table 21
+ */
+/**@{*/
+#define SC16IS7XX_MSR_CD (0X07)   ///< Current CD/DCD State
+#define SC16IS7XX_MSR_RI (0X06)   ///< Current RI State
+#define SC16IS7XX_MSR_DSR (0X05)  ///< Current DSR State
+#define SC16IS7XX_MSR_CTS (0X04)  ///< Current CTS State
+#define SC16IS7XX_MSR_DELTA_CD \
+    (0X03)  ///< Indicates that CD input has changed state
+#define SC16IS7XX_MSR_DELTA_RI \
+    (0X02)  ///< Indicates that RI input has changed state
+#define SC16IS7XX_MSR_DELTA_DSR \
+    (0X01)  ///< Indicates that DSR input has changed state
+#define SC16IS7XX_MSR_DELTA_CTS \
+    (0X00)  ///< Indicates that CTS input has changed state
+/**@}*/
+
+
+/**
  * @anchor interrupt_bits
  * @name Interrupt Enable Register Bits
  *
@@ -189,6 +211,101 @@
 #define SC16IS7XX_INT_GPIO (0x30)    ///< GPIO Interrupt 0b00110000
 #define SC16IS7XX_INT_XOFF (0X10)    ///< XOFF Interrupt 0b00010000
 #define SC16IS7XX_INT_CTSRTS (0X20)  ///< CTS/RTS Interrupt 0b00100000
+/**@}*/
+
+/**
+ * @anchor interrupt_bitmasks
+ * @name Interrupt Bitmasks
+ *
+ * The SC16IS7XX supports the following interrupts, which will trigger a low
+ * signal on the IRQ pin when triggered:
+ *
+ *  - GPIO Interrupts
+ *    - 8 pin interrupts, one on each GPIO pin, triggered by a change in the
+ * state of the pin
+ *       - The pin interrupts cannot be configured for rising or falling edge,
+ * only change
+ *       - If the chip is not configured for "latching" interrupts, it is not
+ * possible to tell which pin triggered the interrupt, and the interrupt will be
+ * cleared when the IIR register is read. If the chip is configured for
+ * "latching" interrupts, then the state of the pin at the time of the interrupt
+ * will be latched and can be read from the IOSTATE register, and the interrupt
+ * will only be cleared when the state of the pin changes from its state at the
+ * time of the interrupt. *
+ *  - Flow Control Interrupts:
+ *    - DSR (Data Set Ready) – Sent by the Data Communication Equipment (DCE)
+ * (e.g., modem) to the Data Terminal Equipment (DTE) (e.g., computer) to
+ * indicate it is operational and ready to receive data
+ *    - DTR (Data Terminal Ready) is asserted by DTE to indicate that it is
+ * powered, ready, and able to communicate.
+ *    - CD (Carrier Detect) - also called DCD (Data Carrier Detect) - indicates
+ * that a valid carrier signal from the remote device has been detected.
+ *    - CTS (Clear to Send) indicates that the device is ready to accept data.
+ *    - RTS (Request to Send) indicates that the device is ready to send data.
+ *    - XOFF (Transmit Off) indicates that the device should stop sending data.
+ *  - Modem Alert Interrupt:
+ *    - RI (Ring Indicator) signals that an incoming call or alert condition is
+ * present on the connected modem or communications line.
+ *  - Line Status Interrupts:
+ *    - RLS (Receiver Line Status) indicates an Overrun Error (OE), Framing
+ * Error (FE), Parity Error (PE), or Break Interrupt (BI) error in the received
+ * data.
+ *    - THR (Transmit Holding Register)
+ *      - If the transmit FIFO is disabled, the THR interrupt is triggered when
+ * the transmit FIFO is empty.
+ *      - If the transmit FIFO is enabled, the THR interrupt is triggered when
+ * the number of bytes in the transmit FIFO is less than or equal to the value
+ * in the Trigger Level Register (TLR).
+ *    - RHR (Receive Holding Register)
+ *      - If the receive FIFO is disabled, the RHR interrupt is triggered when a
+ * byte of data is received and placed in the RHR register.
+ *      - If the receive FIFO is enabled, the RHR interrupt is triggered when
+ * the number of bytes in the receive FIFO is greater than or equal to the value
+ * in the Trigger Level Register (TLR).
+ *    - Timeout Interrupt occurs when the UART receives a number of characters
+ * and these data are not enough to set off the receive interrupt (because they
+ * do not reach the receive trigger level), the UART will generate a time-out
+ * interrupt instead, 4 character times after the last character is received.
+ * The time-out counter will be reset at the center of each stop bit received or
+ * each time the receive FIFO is read.
+ *
+ * The total number of interrupts that can be attached to the IRQ pin is 19,
+ * which includes both GPIO and non-GPIO interrupts.
+ */
+/**@{*/
+#define SC16IS7XX_INT_MASK_RI   \
+    (SC16IS7XX_INT_MODEM << 8 | \
+     SC16IS7XX_MSR_DELTA_RI)  ///< RI Interrupt bitmask
+#define SC16IS7XX_INT_MASK_CD   \
+    (SC16IS7XX_INT_MODEM << 8 | \
+     SC16IS7XX_MSR_DELTA_CD)  ///< CD Interrupt bitmask
+#define SC16IS7XX_INT_MASK_DSR  \
+    (SC16IS7XX_INT_MODEM << 8 | \
+     SC16IS7XX_MSR_DELTA_DSR)  ///< DSR Interrupt bitmask
+#define SC16IS7XX_INT_MASK_CTS   \
+    (SC16IS7XX_INT_CTSRTS << 8 | \
+     SC16IS7XX_MSR_DELTA_CTS)  ///< CTS Interrupt bitmask
+
+#define SC16IS7XX_INT_MASK_DTR  \
+    (SC16IS7XX_INT_MODEM << 8 | \
+     ~SC16IS7XX_MSR_DELTA_DSR)  ///< DTR Interrupt bitmask (no MRS bits set)
+#define SC16IS7XX_INT_MASK_RTS \
+    (SC16IS7XX_INT_CTSRTS << 8)  ///< RTS Interrupt bitmask (no MRS bits set)
+
+#define SC16IS7XX_INT_MASK_XOFF \
+    (SC16IS7XX_INT_XOFF << 8)  ///< XOFF Interrupt bitmask
+#define SC16IS7XX_INT_MASK_RLS \
+    (SC16IS7XX_INT_LINE << 8)  ///< Line Status Interrupt bitmask
+#define SC16IS7XX_INT_MASK_THR \
+    (SC16IS7XX_INT_THR << 8)  ///< THR Interrupt bitmask
+#define SC16IS7XX_INT_MASK_RHR \
+    (SC16IS7XX_INT_RHR << 8)  ///< RHR Interrupt bitmask
+#define SC16IS7XX_INT_MASK_TIMEOUT \
+    (SC16IS7XX_INT_TIMEOUT << 8)  ///< Timeout Interrupt bitmask
+
+
+/**@}*/
+
 /**
  * @anchor default_values
  * @name Default Values
@@ -201,6 +318,8 @@
     (14745600UL)  ///< The default frequency of the crystal in hertz
 /**@}*/
 
+typedef void (*voidFxnPtr)(void);
+
 /**
  * @brief Base driver for SC16IS7XX family devices using I2C or SPI.
  */
@@ -210,12 +329,19 @@ class SC16IS7XX {
 
     bool _init(void);
 
+    voidFxnPtr ISRcallback[SC16IS7XX_GPIO_PINS + SC16IS7XX_NON_GPIO_INTERRUPTS];
+    uint16_t   ISRlist[SC16IS7XX_GPIO_PINS + SC16IS7XX_NON_GPIO_INTERRUPTS];
+    uint8_t    nints;  // Stores total number of attached interrupts
+
  protected:
     Adafruit_I2CDevice* i2c_dev = nullptr;  ///< Pointer to I2C bus interface
     Adafruit_SPIDevice* spi_dev = nullptr;  ///< Pointer to SPI bus interface
 
     virtual void resetDevice();
     virtual bool ping();
+
+    void storeCallback(uint16_t callbackMask, voidFxnPtr callback);
+    void clearCallback(uint16_t callbackMask);
 
  public:
     /**
@@ -253,13 +379,19 @@ class SC16IS7XX {
 
     void    setPinInterrupt(uint8_t pin, bool enabled);
     uint8_t getPinInterrupt(uint8_t pin);
-    uint8_t isr();
+
     void    setPortState(uint8_t state);
     uint8_t getPortState();
     void    setPortMode(uint8_t mode);
     uint8_t getPortMode();
 
     void setGPIOLatch(bool enabled);
+
+    void attachInterrupt(uint8_t pin, voidFxnPtr callback, uint8_t);
+    void detachInterrupt(uint8_t pin);
+
+    void     interruptHandler(void);
+    uint16_t getInterruptSource();
 };
 
 #endif

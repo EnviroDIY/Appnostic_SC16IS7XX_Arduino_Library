@@ -70,6 +70,43 @@ class SC16IS752 : public SC16IS7XX, public Stream {
     void enableTHRInterrupt(bool enabled);
     void enableRHRInterrupt(bool enabled);
 
+    // RI - ring indicator
+    void attachRIInterrupt(voidFxnPtr callback);
+    void detachRIInterrupt();
+    // CD - carrier detect (aka Data Carrier Detect (DCD))
+    void attachCDInterrupt(voidFxnPtr callback);
+    void detachCDInterrupt();
+    // DSR - data set ready
+    void attachDSRInterrupt(voidFxnPtr callback);
+    void detachDSRInterrupt();
+    // DTR - data terminal ready
+    void attachDTRInterrupt(voidFxnPtr callback);
+    void detachDTRInterrupt();
+
+    // CTS - clear to send (used in CTS/RTS hardware flow control)
+    void attachCTSInterrupt(voidFxnPtr callback);
+    void detachCTSInterrupt();
+    // RTS - request to send (used in CTS/RTS hardware flow control)
+    void attachRTSInterrupt(voidFxnPtr callback);
+    void detachRTSInterrupt();
+
+    // XOFF - software flow control
+    void attachXOFFInterrupt(voidFxnPtr callback);
+    void detachXOFFInterrupt();
+
+    // RLS - receive line status
+    void attachRLSInterrupt(voidFxnPtr callback);
+    void detachRLSInterrupt();
+    // THR - transmit holding register status/empty
+    void attachTHRInterrupt(voidFxnPtr callback);
+    void detachTHRInterrupt();
+    // RHR - receive holding register status/full
+    void attachRHRInterrupt(voidFxnPtr callback);
+    void detachRHRInterrupt();
+    // Timeout
+    void attachTimeoutInterrupt(voidFxnPtr callback);
+    void detachTimeoutInterrupt();
+
     // uart begin/end, aligned with HardwareSerial
     void begin(unsigned long baud) {
         begin(baud, SERIAL_8N1);

@@ -71,6 +71,11 @@ bool SC16IS7XX::ping() {
 
 
 bool SC16IS7XX::_init() {
+    // empty interrupt registers and callbacks
+    memset(ISRlist, 0, sizeof(ISRlist));
+    memset(ISRcallback, 0, sizeof(ISRcallback));
+    nints = 0;
+
     resetDevice();
     delayMicroseconds(100);  // let things settle
     return ping();
@@ -307,43 +312,6 @@ uint8_t SC16IS7XX::getPinInterrupt(uint8_t pin) {
 }
 
 /**
- * @brief used to determine interrupt source. it should really be fleshed out
- * better with callbacks.
- * @return the interrupt source as indicated by the interrupt identification
- * register
- */
-uint8_t SC16IS7XX::isr() {
-    uint8_t                 irq_src;
-    Adafruit_BusIO_Register IIR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
-                                SC16IS7XX_REG_IIR << 3);
-
-    irq_src = IIR.read() & 0x3E;
-    //^ mask off the FCR[7:6] and interrupt pending [0] bits 0b00111110
-
-    switch (irq_src) {
-        case SC16IS7XX_INT_LINE:  // Receiver Line Status Error
-            break;
-        case SC16IS7XX_INT_TIMEOUT:  // Receiver time-out interrupt
-            break;
-        case SC16IS7XX_INT_RHR:  // RHR interrupt
-            break;
-        case SC16IS7XX_INT_THR:  // THR interrupt
-            break;
-        case SC16IS7XX_INT_MODEM:  // modem interrupt;
-            break;
-        case SC16IS7XX_INT_GPIO:  // input pin change of state
-            break;
-        case SC16IS7XX_INT_XOFF:  // XOFF
-            break;
-        case SC16IS7XX_INT_CTSRTS:  // CTS,RTS
-            break;
-        default: break;
-    }
-
-    return irq_src;
-}
-
-/**
  * @brief Write all GPIO output states at once.
  * @param state Bitmask written to the IOSTATE register.
  */
@@ -405,6 +373,194 @@ void SC16IS7XX::setGPIOLatch(bool enabled) {
                                           SC16IS7XX_REG_IOCONTROL << 3);
     Adafruit_BusIO_RegisterBits latch_bit(&IOControl, 1, 0);
     latch_bit.write(enabled);
+}
+
+
+/**
+ * @brief Specifies a named Interrupt Service Routine (ISR) to call when a
+ * pin-change interrupt occurs. Replaces any previous function that was attached
+ * to the interrupt.
+ */
+void SC16IS7XX::storeCallback(uint16_t callbackMask, voidFxnPtr callback) {
+    // Store the interrupt callback.
+    // Only store when there is really an ISR to call.
+    // This allow for calling attachInterrupt(pin, NULL, mode), we set up all
+    // needed register but won't service the interrupt, this way we also don't
+    // need to check it inside the ISR.
+    if (callback) {
+        // Store interrupts to service in order of when they were attached
+        // to allow for first come first serve handler
+        uint32_t current = 0;
+
+        // Check if we already have this interrupt
+        for (current = 0; current < nints; current++) {
+            if (ISRlist[current] == callbackMask) { break; }
+        }
+        if (current == nints) {
+            // Need to make a new entry
+            nints++;
+        }
+        ISRlist[current] = callbackMask;  // List of interrupt in order of when
+                                          // they were attached
+        ISRcallback[current] = callback;  // List of callback addressess
+    }
+
+    // Enable pin interrupt for the pin
+    setPinInterrupt(callbackMask, true);
+}
+
+/**
+ * @brief Turns off the given interrupt.
+ */
+void SC16IS7XX::clearCallback(uint16_t callbackMask) {
+    // Remove callback from the ISR list
+    uint32_t current;
+    for (current = 0; current < nints; current++) {
+        if (ISRlist[current] == callbackMask) { break; }
+    }
+    if (current == nints) return;  // We didn't have it
+
+    // Shift the reminder down
+    for (; current < nints - 1; current++) {
+        ISRlist[current]     = ISRlist[current + 1];
+        ISRcallback[current] = ISRcallback[current + 1];
+    }
+    nints--;
+}
+
+
+/**
+ * @brief Specifies a named Interrupt Service Routine (ISR) to call when a
+ * pin-change interrupt occurs. Replaces any previous function that was attached
+ * to the interrupt.
+ */
+void SC16IS7XX::attachInterrupt(uint8_t pin, voidFxnPtr callback, uint8_t) {
+    if (!(0 <= pin && pin <= 7)) {
+        // Invalid pin number, do nothing or handle error as needed
+        return;
+    }
+
+    // mask for the position of the interrupt in the our list of callbacks
+    uint16_t pinMask      = 1 << pin;
+    uint16_t callbackMask = SC16IS7XX_INT_GPIO << 8 | pinMask;
+
+    // Store the interrupt callback.
+    storeCallback(callbackMask, callback);
+
+    // Enable pin interrupt for the pin
+    setPinInterrupt(pin, true);
+}
+
+/**
+ * @brief Turns off the given interrupt.
+ */
+void SC16IS7XX::detachInterrupt(uint8_t pin) {
+    if (!(0 <= pin && pin <= 7)) {
+        // Invalid pin number, do nothing or handle error as needed
+        return;
+    }
+
+    // disable pin interrupt for the pin
+    setPinInterrupt(pin, false);
+
+    // mask for the position of the interrupt in the our list of callbacks
+    uint16_t pinMask      = 1 << pin;
+    uint16_t callbackMask = SC16IS7XX_INT_GPIO << 8 | pinMask;
+
+    // clear the callback for the interrupt
+    clearCallback(callbackMask);
+}
+/**
+ * @brief Interrupt Handler
+ */
+uint16_t SC16IS7XX::getInterruptSource(void) {
+    // Calling the routine directly from -here- takes about 1us
+    // Depending on where you are in the list it will take longer
+    uint8_t                 irq_src;
+    Adafruit_BusIO_Register IIR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                SC16IS7XX_REG_IIR << 3);
+
+    // get the interrupt source
+    irq_src = IIR.read() & 0x3E;
+    //^ mask off the FCR[7:6] and interrupt pending [0] bits 0b00111110
+
+    uint16_t callbackMask = irq_src
+        << 8;  // We use the upper byte to store the source
+
+    switch (irq_src) {
+        // Receiver Line Status Error - user must read all errored characters
+        // from the RX FIFO to clear
+        case SC16IS7XX_INT_LINE:
+        // Receiver time-out interrupt interrupt will be cleared by the next
+        // stop bit or by reading the IIR register
+        case SC16IS7XX_INT_TIMEOUT:
+        // RHR interrupt - user must read all enough from the RX FIFO to free
+        // space to clear
+        case SC16IS7XX_INT_RHR:
+            // THR interrupt - the chip must successfully send enough data to
+            // free space in the TX FIFO to clear
+        case SC16IS7XX_INT_THR:
+        // XOFF interrupt is cleared by reading the IIR register or when an XON
+        // character is received
+        case SC16IS7XX_INT_XOFF:
+            // Only one type of interrupt with these IIR sources, no XOR needed
+            // to differentiate.
+            break;
+
+        // modem interrupt (CD, RI, DSR, DTR) is cleared by reading the MSR
+        // register or when the pin state changes again
+        case SC16IS7XX_INT_MODEM:
+        // CTS,RTS is cleared by reading the MSR register or when the pin state
+        // changes again
+        case SC16IS7XX_INT_CTSRTS:
+            // We use the upper byte to store the source of the
+            // interrupt, but we need to differentiate between modem and
+            // CTS/RTS interrupts since they share the same IIR code
+            Adafruit_BusIO_Register MSR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                        SC16IS7XX_REG_MSR << 3);
+            uint8_t                 msr = MSR.read() & 0x0F;
+            //^ keep the bottom 4 bits which are the delta bits
+            callbackMask |= msr;
+            break;
+
+        // pin change interrupt, cleared by reading the IOState register or when
+        // the pin state changes again - unless the interrupt is latched, then
+        // it is only cleared by reading the IOState register
+        case SC16IS7XX_INT_GPIO:
+            // We use the upper byte to store the source of the
+            // interrupt, and get which pin from the input register
+            Adafruit_BusIO_Register IOState(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                            SC16IS7XX_REG_IOSTATE << 3);
+            uint8_t                 iostate = IOState.read() & 0x0F;
+            callbackMask |= msr;
+            break;
+        default: break;
+    }
+
+    return callbackMask;
+
+    // find the position of the interrupt in the our list of callbacks
+    uint32_t current;
+    for (current = 0; current < nints; current++) {
+        if (ISRlist[current] == callbackMask) { break; }
+    }
+    // Call the callback function
+    ISRcallback[current]();
+}
+
+/**
+ * @brief Interrupt Handler
+ */
+void SC16IS7XX::interruptHandler(void) {
+    uint16_t callbackMask = getInterruptSource();
+
+    // find the position of the interrupt in the our list of callbacks
+    uint8_t current;
+    for (current = 0; current < nints; current++) {
+        if (ISRlist[current] == callbackMask) { break; }
+    }
+    // Call the callback function
+    ISRcallback[current]();
 }
 
 // cSpell:words SPIFREQ SPIREG MISO MOSI
