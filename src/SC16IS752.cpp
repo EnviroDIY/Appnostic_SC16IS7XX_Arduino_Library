@@ -98,7 +98,7 @@ void SC16IS752::setFIFOTriggerLevel(bool rx, uint8_t length) {
  * Divisor)
  */
 void SC16IS752::setBaudrate(uint32_t baudRate) {
-    uint16_t divisor;
+    uint32_t divisor;
     uint8_t  prescaler;
 
     // check if the device has sleep mode enabled.

@@ -555,21 +555,22 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
         case SC16IS7XX_INT_MODEM:
         // CTS,RTS is cleared by reading the MSR register or when the pin state
         // changes again
-        case SC16IS7XX_INT_CTSRTS:
+        case SC16IS7XX_INT_CTSRTS: {
             // We use the upper byte to store the source of the
             // interrupt, but we need to differentiate between modem and
             // CTS/RTS interrupts since they share the same IIR code
-            Adafruit_BusIO_Register MSR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
-                                        SC16IS7XX_REG_MSR << 3);
-            uint8_t                 msr = MSR.read() & 0x0F;
+            Adafruit_BusIO_Register modemStatusReg(
+                i2c_dev, spi_dev, SC16IS7XX_SPIREG, SC16IS7XX_REG_MSR << 3);
+            uint8_t modemStatus = modemStatusReg.read() & 0x0F;
             //^ keep the bottom 4 bits which are the delta bits
-            callbackMask |= msr;
+            callbackMask |= modemStatus;
             break;
+        }
 
         // pin change interrupt, cleared by reading the IOState register or when
         // the pin state changes again - unless the interrupt is latched, then
         // it is only cleared by reading the IOState register
-        case SC16IS7XX_INT_GPIO:
+        case SC16IS7XX_INT_GPIO: {
             // We use the upper byte to store the source of the
             // interrupt, and get which pin from the input register
             Adafruit_BusIO_Register IOState(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
@@ -577,6 +578,7 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
             uint8_t                 iostate = IOState.read() & 0x0F;
             callbackMask |= iostate;
             break;
+        }
         default: break;
     }
 
