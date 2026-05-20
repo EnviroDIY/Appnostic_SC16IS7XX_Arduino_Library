@@ -61,7 +61,14 @@ class SC16IS752 : public SC16IS7XX, public Stream {
     void setLine(uint8_t dataBits, uint8_t parity, uint8_t stopBits);
     void setLine(uint8_t config);
     void enableFlowControl(bool enabled);
+
     void enableModemInterrupt(bool enabled);
+    void enableCTSInterrupt(bool enabled);
+    void enableRTSInterrupt(bool enabled);
+    void enableXOFFInterrupt(bool enabled);
+    void enableRLSInterrupt(bool enabled);
+    void enableTHRInterrupt(bool enabled);
+    void enableRHRInterrupt(bool enabled);
 
     // uart begin/end, aligned with HardwareSerial
     void begin(unsigned long baud) {

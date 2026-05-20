@@ -214,13 +214,6 @@ class SC16IS7XX {
     void enableSleepMode(bool enabled);
     bool isSleepEnabled();
 
-    void enableCTSInterrupt(bool enabled);
-    void enableRTSInterrupt(bool enabled);
-    void enableXOFFInterrupt(bool enabled);
-    void enableRLSInterrupt(bool enabled);
-    void enableTHRInterrupt(bool enabled);
-    void enableRHRInterrupt(bool enabled);
-
     void    setPinInterrupt(uint8_t pin, bool enabled);
     uint8_t getPinInterrupt(uint8_t pin);
     uint8_t isr();
