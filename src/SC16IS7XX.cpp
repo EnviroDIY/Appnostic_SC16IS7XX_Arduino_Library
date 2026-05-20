@@ -409,7 +409,7 @@ void SC16IS7XX::storeCallback(uint16_t callbackMask, voidFxnPtr callback) {
     if (callback) {
         // Store interrupts to service in order of when they were attached
         // to allow for first come first serve handler
-        uint32_t current = 0;
+        uint8_t current = 0;
 
         // Check if we already have this interrupt
         for (current = 0; current < nints; current++) {
@@ -432,7 +432,7 @@ void SC16IS7XX::storeCallback(uint16_t callbackMask, voidFxnPtr callback) {
  */
 void SC16IS7XX::clearCallback(uint16_t callbackMask) {
     // Remove callback from the ISR list
-    int8_t current;
+    uint8_t current;
     for (current = 0; current < nints; current++) {
         if (ISRlist[current] == callbackMask) { break; }
     }
