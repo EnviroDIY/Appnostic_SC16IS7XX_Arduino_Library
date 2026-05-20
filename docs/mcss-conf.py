@@ -1,4 +1,7 @@
-DOXYFILE = "mcss-Doxyfile"
+DOXYFILE = "doxyfile"
+HTML_OUTPUT = "../SC16IS7XX_Doxygen/m.css"
+WARN_LOGFILE = "output_mcss.log"
+PROJECT_REPOSITORY = "https://github.com/EnviroDIY/SC16IS7XX"
 THEME_COLOR = "#cb4b16"
 FAVICON = "enviroDIY_Favicon.png"
 LINKS_NAVBAR1 = [
@@ -6,8 +9,20 @@ LINKS_NAVBAR1 = [
         "About",
         "index",
         [
+            ('<a href="page_device_addresses.html">Possible Device Addresses</a>',),
+            ('<a href="page_supported_interrupts.html">Supported Interrupts</a>',),
             ('<a href="change_log.html">ChangeLog</a>',),
         ],
+    ),
+    (
+        "Classes",
+        "annotated",
+        [],
+    ),
+    (
+        "Source Files",
+        "files",
+        [],
     ),
     (
         "Examples",

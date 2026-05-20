@@ -1,18 +1,13 @@
 /**
- * This is an Arduino library for the SC16IS7XX dual UART chips from NXP.
+ * @file SC16IS752.cpp
+ * @copyright Stroud Water Research Center
+ * Part of the EnviroDIY ModularSensors library for Arduino.
+ * This library is published under the BSD-3 license.
+ * @author Sara Geleskie Damiano <sdamiano@stroudcenter.org>
  *
- * It is possible that this library may work with other vendor
- * devices using I2C or SPI but its primary purpose is for
- * Appnostic devices. Pull requests to improve compatibility are
- * welcomed but issues regarding other vendor devices may not receive
- * priority.
- *
- * Credits:
- * \@SandboxElectronics for most of the code
- * \@TD-er for the SC16IS752 patches
- *
- * Made with love by the Appnostic team!
+ * @brief Implements the SC16IS752 class.
  */
+
 #include "SC16IS752.h"
 
 /**

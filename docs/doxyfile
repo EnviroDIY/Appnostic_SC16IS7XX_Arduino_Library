@@ -1237,7 +1237,7 @@ FILTER_SOURCE_PATTERNS =
 # (index.html). This can be useful if you have a project on for instance GitHub
 # and want to reuse the introduction page also for the Doxygen output.
 
-USE_MDFILE_AS_MAINPAGE =
+USE_MDFILE_AS_MAINPAGE = ../README.md
 
 # If the IMPLICIT_DIR_DOCS tag is set to YES, any README.md file found in sub-
 # directories of the project's root, is used as the documentation for that sub-
@@ -2597,7 +2597,6 @@ PREDEFINED             = DOXYGEN=1 \
                          ARDUINO_ARCH_AVR \
                          ARDUINO=10808 \
                          __AVR_ATmega1284P__ \
-                         NEOSWSERIAL_EXTERNAL_PCINT \
                          SERIAL_PORT_USBVIRTUAL=0
 
 # If the MACRO_EXPANSION and EXPAND_ONLY_PREDEF tags are set to YES then this

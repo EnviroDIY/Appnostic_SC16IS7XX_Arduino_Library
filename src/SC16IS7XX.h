@@ -1,3 +1,14 @@
+/**
+ * @file SC16IS7XX.h
+ * @copyright Stroud Water Research Center
+ * Part of the EnviroDIY ModularSensors library for Arduino.
+ * This library is published under the BSD-3 license.
+ * @author Sara Geleskie Damiano <sdamiano@stroudcenter.org>
+ *
+ * @brief Contains the SC16IS7XX class and defines for many of the
+ * device's features.
+ */
+
 #ifndef _SC16IS7XX_H_
 #define _SC16IS7XX_H_
 
@@ -30,8 +41,7 @@
 /**@}*/
 
 /**
- * @anchor device_addresses
- * @name Device Addresses
+ * @page page_device_addresses Possible Device Addresses
  *
  * Possible **8-bit** I2C addresses for the SC16IS7XX family of devices.
  *
@@ -64,12 +74,16 @@
  *
  * ** X = logic 0 for write cycle; X = logic 1 for read cycle.
  */
+/**
+ * @anchor device_addresses
+ * @name Device Addresses
+ */
 /**@{*/
-// A:VDD
-// B:GND
-// C:SCL
-// D:SDA
-#define SC16IS7XX_ADDRESS_AA (0X90)  ///< Both A and B tied to VDD
+// A:VDD (positive voltage)
+// B:VSS (ground)
+// C:SCL (I2C clock)
+// D:SDA (I2C data)
+#define SC16IS7XX_ADDRESS_AA (0X90)  ///< A tied to VDD, B tied to VDD
 #define SC16IS7XX_ADDRESS_AB (0X92)  ///< A tied to VDD, B tied to GND
 #define SC16IS7XX_ADDRESS_AC (0X94)  ///< A tied to VDD, B tied to SCL
 #define SC16IS7XX_ADDRESS_AD (0X96)  ///< A tied to VDD, B tied to SDA
@@ -87,27 +101,25 @@
 #define SC16IS7XX_ADDRESS_DD (0XAE)  ///< A tied to SDA, B tied to SDA
 /**@}*/
 
+// clang-format off
 /**
  * @anchor registers
  * @name Registers
- */
-// clang-format off
-/**
-| Bit(s) | Name     | Function                                                      |
-|--------|----------|---------------------------------------------------------------|
-| 7      | -        | Not used                                                      |
-| 6:3    | A[3:0]   | UART’s internal register select                               |
-| 2:1    | CH1, CH0 | Channel select [00 = A, 01 = B, 10 = reserved, 11 = reserved] |
-| 0      | -        | Not used                                                      |
-*/
-// clang-format on
-/**
+ *
+ * | Bit(s) | Name     | Function                                                      |
+ * |--------|----------|---------------------------------------------------------------|
+ * | 7      | -        | Not used                                                      |
+ * | 6:3    | A[3:0]   | UART’s internal register select                               |
+ * | 2:1    | CH1, CH0 | Channel select [00 = A, 01 = B, 10 = reserved, 11 = reserved] |
+ * | 0      | -        | Not used                                                      |
+ *
  * @note Because the address is shifted left by 3 bits and the channel is
  * shifted left by 1 bit, the register address to use in the Wire functions is
  * effectively (reg_addr << 3 | channel << 1) when writing or reading registers
  * for a specific channel on the SC16IS752.
  */
 /**@{*/
+// clang-format on
 // General registers
 #define SC16IS7XX_REG_RHR (0x00)  ///< Receiver Holding Register (read only)
 #define SC16IS7XX_REG_THR (0X00)  ///< Transmit Holding Register (write only)
@@ -171,19 +183,6 @@
  * @name Interrupt Enable Register Bits
  *
  * Taken from datasheet table 11
- *
- * @note
- * - Enabling any of the MODEM, RLS, THR, or RHR interrupts put the module into
- * "Interrupt Mode Operation".  In this mode, the host is informted of the
- * status of the rx and tx via the interrupt signal (the IRQ pin) and should
- * check the IIR register for the source of the interrupt. *
- * - If you do NOT enable any of the MODEM, RLS, THR, or RHR interrupts, then
- * the module is in "Polling Mode Operation" and the host should check the LSR
- * and MSR registers to check the status of the rx and tx. *
- * - Enabling the CTS, RTS, or XOFF interrupts does NOT put the module into
- * "Interrupt Mode Operation". The host should check the IIR register for the
- * source of the interrupt if any of these are enabled, but they can be enabled
- * in either mode of operation.
  */
 /**@{*/
 #define SC16IS7XX_IER_CTS (0X07)    ///< CTS Interrupt Enable
@@ -219,8 +218,7 @@
 /**@}*/
 
 /**
- * @anchor interrupt_bitmasks
- * @name Interrupt Bitmasks
+ * @page page_supported_interrupts Supported Interrupts
  *
  * The SC16IS7XX supports the following interrupts, which will trigger a low
  * signal on the IRQ pin when triggered:
@@ -276,6 +274,23 @@
  *
  * The total number of interrupts that can be attached to the IRQ pin is 19,
  * which includes both GPIO and non-GPIO interrupts.
+ *
+ * @note
+ * - Enabling any of the MODEM, RLS, THR, or RHR interrupts put the module into
+ * "Interrupt Mode Operation".  In this mode, the host is informted of the
+ * status of the rx and tx via the interrupt signal (the IRQ pin) and should
+ * check the IIR register for the source of the interrupt. *
+ * - If you do NOT enable any of the MODEM, RLS, THR, or RHR interrupts, then
+ * the module is in "Polling Mode Operation" and the host should check the LSR
+ * and MSR registers to check the status of the rx and tx. *
+ * - Enabling the CTS, RTS, or XOFF interrupts does NOT put the module into
+ * "Interrupt Mode Operation". The host should check the IIR register for the
+ * source of the interrupt if any of these are enabled, but they can be enabled
+ * in either mode of operation.
+ */
+/**
+ * @anchor interrupt_bitmasks
+ * @name Interrupt Bitmasks
  */
 /**@{*/
 #define SC16IS7XX_INT_MASK_RI   \
@@ -322,6 +337,7 @@
     (14745600UL)  ///< The default frequency of the crystal in hertz
 /**@}*/
 
+/// @brief  Function pointer type for interrupt callbacks
 typedef void (*voidFxnPtr)(void);
 
 /**
