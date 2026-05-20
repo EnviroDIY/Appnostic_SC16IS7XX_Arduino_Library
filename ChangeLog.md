@@ -12,15 +12,28 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- Restructured to depend on Adafruit's BusIO
+- Moved all stream and Serial type functions to the SC16IS752 class
+- Removed the Appnostic naming prefix from source files and symbols
 - Ran clang-format on all files
+- Made some spelling corrections
+- Updated library metadata/versioning files and expanded CI/release workflows
 
 ### Added
 
+- Added support for attaching and handling interrupts of all supported types
+- Added function to enable hardware flow control
+- Added Code Rabbit configuration
+- Added Doxyfile and filled out Doxygen tags where they were missing
 - Added structure and workflow matching other EnviroDIY libraries
 
 ### Removed
 
+- Removed the extern of ExtSerial
+
 ### Fixed
+
+- Fixed peek by re-implementing read functions as they were initially written by @TD-er
 
 ***
 
