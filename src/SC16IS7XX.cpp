@@ -459,7 +459,7 @@ void SC16IS7XX::clearCallback(uint16_t callbackMask) {
  * of the pin state.
  */
 void SC16IS7XX::attachInterrupt(uint8_t pin, voidFxnPtr callback, uint8_t) {
-    if (!(0 <= pin && pin <= 7)) {
+    if (pin > 7) {
         // Invalid pin number, do nothing or handle error as needed
         return;
     }
@@ -480,7 +480,7 @@ void SC16IS7XX::attachInterrupt(uint8_t pin, voidFxnPtr callback, uint8_t) {
  * @param pin the pin number on the port expander (0 - 7)
  */
 void SC16IS7XX::detachInterrupt(uint8_t pin) {
-    if (!(0 <= pin && pin <= 7)) {
+    if (pin > 7) {
         // Invalid pin number, do nothing or handle error as needed
         return;
     }
