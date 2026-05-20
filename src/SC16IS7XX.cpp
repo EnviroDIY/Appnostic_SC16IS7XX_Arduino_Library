@@ -432,7 +432,7 @@ void SC16IS7XX::storeCallback(uint16_t callbackMask, voidFxnPtr callback) {
  */
 void SC16IS7XX::clearCallback(uint16_t callbackMask) {
     // Remove callback from the ISR list
-    uint32_t current;
+    int8_t current;
     for (current = 0; current < nints; current++) {
         if (ISRlist[current] == callbackMask) { break; }
     }

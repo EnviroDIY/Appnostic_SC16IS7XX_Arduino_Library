@@ -364,7 +364,7 @@ class SC16IS7XX {
 
     voidFxnPtr ISRcallback[SC16IS7XX_GPIO_PINS + SC16IS7XX_NON_GPIO_INTERRUPTS];
     uint16_t   ISRlist[SC16IS7XX_GPIO_PINS + SC16IS7XX_NON_GPIO_INTERRUPTS];
-    uint8_t    nints;  // Stores total number of attached interrupts
+    int8_t     nints;  // Stores total number of attached interrupts
 
  protected:
     Adafruit_I2CDevice* i2c_dev = nullptr;  ///< Pointer to I2C bus interface
