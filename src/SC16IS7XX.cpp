@@ -21,7 +21,7 @@
 
 /**
  * @brief sets the crystal frequency in hertz.
- * @note Defaults to 147456000 (Hz).  A 14.7456MHz crystal is commonly used with
+ * @note Defaults to 14745600 (Hz).  A 14.7456MHz crystal is commonly used with
  * the SC16IS7XX family and is the default for this library, but other
  * frequencies may be used. The crystal frequency is used to calculate baud
  * rates and should be set correctly for accurate baud rates.
@@ -407,9 +407,6 @@ void SC16IS7XX::storeCallback(uint16_t callbackMask, voidFxnPtr callback) {
                                           // they were attached
         ISRcallback[current] = callback;  // List of callback addressess
     }
-
-    // Enable pin interrupt for the pin
-    setPinInterrupt(callbackMask, true);
 }
 
 /**
@@ -549,22 +546,13 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
             Adafruit_BusIO_Register IOState(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                             SC16IS7XX_REG_IOSTATE << 3);
             uint8_t                 iostate = IOState.read() & 0x0F;
-            callbackMask |= msr;
+            callbackMask |= iostate;
             break;
         default: break;
     }
 
     return callbackMask;
-
-    // find the position of the interrupt in the our list of callbacks
-    uint32_t current;
-    for (current = 0; current < nints; current++) {
-        if (ISRlist[current] == callbackMask) { break; }
-    }
-    // Call the callback function
-    ISRcallback[current]();
 }
-
 /**
  * @brief Interrupt Handler
  */
@@ -576,8 +564,8 @@ void SC16IS7XX::interruptHandler(void) {
     for (current = 0; current < nints; current++) {
         if (ISRlist[current] == callbackMask) { break; }
     }
-    // Call the callback function
-    ISRcallback[current]();
+    // Call the callback function if found
+    if (current < nints && ISRcallback[current]) { ISRcallback[current](); }
 }
 
 // cSpell:words SPIFREQ SPIREG MISO MOSI

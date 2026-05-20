@@ -1,7 +1,7 @@
 /**
  * @example{lineno} gpio_blink.ino
  *
- * @brief I2C UART GPIO Test
+ * @brief Simple GPIO blink test using I2C communication with the SC16IS7XX.
  *
  * The basic blink
  *

@@ -1,5 +1,5 @@
-#ifndef _APPNOSTIC_SC16IS7XX_H_
-#define _APPNOSTIC_SC16IS7XX_H_
+#ifndef _SC16IS7XX_H_
+#define _SC16IS7XX_H_
 
 #if ARDUINO >= 100
 #include "Arduino.h"
@@ -32,11 +32,16 @@
 /**
  * @anchor device_addresses
  * @name Device Addresses
- * Possible I2C addresses for the SC16IS7XX family of devices.
+ *
+ * Possible **8-bit** I2C addresses for the SC16IS7XX family of devices.
  *
  * Modified from Table 32. SC16IS752/SC16IS762 address map
  *
  * @note For the purposes of the Arduino Wire library, use the 7-bit address!
+ * The begin_i2c() function will convert 8-bit addresses to 7-bit if needed.  We
+ * list the 8-bit addresses here because the datasheet lists them in 8-bit form
+ * and it is easier to cross reference with the datasheet this way. The 7-bit
+ * address is just the 8-bit address shifted right by one bit (or divided by 2).
  *
  * | A1  | A0  | Binary**   | Hex Address (W/R) | 7-Bit Address |
  * |-----|-----|------------|-------------------|---------------|
@@ -286,9 +291,8 @@
     (SC16IS7XX_INT_CTSRTS << 8 | \
      SC16IS7XX_MSR_DELTA_CTS)  ///< CTS Interrupt bitmask
 
-#define SC16IS7XX_INT_MASK_DTR  \
-    (SC16IS7XX_INT_MODEM << 8 | \
-     ~SC16IS7XX_MSR_DELTA_DSR)  ///< DTR Interrupt bitmask (no MRS bits set)
+#define SC16IS7XX_INT_MASK_DTR \
+    (SC16IS7XX_INT_MODEM << 8)  ///< DTR Interrupt bitmask (no MRS bits set)
 #define SC16IS7XX_INT_MASK_RTS \
     (SC16IS7XX_INT_CTSRTS << 8)  ///< RTS Interrupt bitmask (no MRS bits set)
 
@@ -394,6 +398,6 @@ class SC16IS7XX {
     uint16_t getInterruptSource();
 };
 
-#endif
+#endif  // _SC16IS7XX_H_
 
 // cSpell:words SPIFREQ SPIREG MISO MOSI

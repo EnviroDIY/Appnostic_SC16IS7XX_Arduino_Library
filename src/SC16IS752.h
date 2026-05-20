@@ -1,16 +1,17 @@
-#pragma once
-
 #ifndef _SC16IS752_H_
 #define _SC16IS752_H_
 #include "SC16IS7XX.h"
 
-#define SC16IS752_CHANNEL_A 0x00
-#define SC16IS752_CHANNEL_B 0x01
-#define SC16IS752_CHANNEL_BOTH 0x00
+#define SC16IS752_CHANNEL_A 0x00  ///< Channel A of the SC16IS752
+#define SC16IS752_CHANNEL_B 0x01  ///< Channel B of the SC16IS752
 
 // Define config for Serial.begin(baud, config);
 // Copied from Arduino's HardwareSerial.h for compatibility with
 // Serial.begin(baud, config) style calls
+// To not conflict with Arduino's SERIAL_* defines, we only define these if they
+// aren't already defined.  We assume that if SERIAL_8N1 is defined, then all
+// the other SERIAL_* configs are also defined.
+#ifndef SERIAL_8N1
 #define SERIAL_5N1 (0x00)  // 00 00 0 000
 #define SERIAL_6N1 (0x02)  // 00 00 0 010
 #define SERIAL_7N1 (0x04)  // 00 00 0 100
@@ -35,6 +36,7 @@
 #define SERIAL_6O2 (0x3A)  // 00 11 1 010
 #define SERIAL_7O2 (0x3C)  // 00 11 1 100
 #define SERIAL_8O2 (0x3E)  // 00 11 1 110
+#endif
 
 /**
  * @brief SC16IS752 dual-channel UART driver.
@@ -129,9 +131,4 @@ class SC16IS752 : public SC16IS7XX, public Stream {
     void   flush();
 };
 
-/**
- * @brief Default external serial instance.
- */
-extern SC16IS752 ExtSerial;
-
-#endif
+#endif  // _SC16IS752_H_

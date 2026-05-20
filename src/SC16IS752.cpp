@@ -246,11 +246,11 @@ void SC16IS752::setLine(uint8_t config) {
         default: dataBits = 8; break;
     }
 
-    // extract stop bits from config (bit 4)
-    if (config & 0x10) { stopBits = 2; }
+    // extract stop bits from config (bit 3)
+    if (config & 0x08) { stopBits = 2; }
 
-    // extract parity from config (bits 5:6)
-    switch (config & 0x60) {
+    // extract parity from config (bits 4:5)
+    switch (config & 0x30) {
         case 0x00: parity = 0; break;  // no parity
         case 0x20: parity = 2; break;  // even parity
         case 0x30: parity = 1; break;  // odd parity
@@ -855,15 +855,28 @@ int SC16IS752::peek() {
  * @return size_t Number of bytes written.
  */
 size_t SC16IS752::write(const uint8_t* buf, size_t size) {
+    if (size == 0) return 0;
+
     // Pointer to where in the buffer we're up to
     // A const cast is need to cast-away the constant-ness of the buffer (ie,
     // modify it).
-    uint8_t* txPtr     = const_cast<uint8_t*>(buf);
-    size_t   bytesSent = 0;
+    uint8_t* txPtr      = const_cast<uint8_t*>(buf);
+    size_t   bytesSent  = 0;
+    uint32_t stallStart = 0;
 
     do {
         // check how much space is available in the TX FIFO
         size_t space = FIFOAvailableSpace();
+        if (space == 0) {
+            if (stallStart == 0) { stallStart = millis(); }
+            // Prevent a busy-spin when FIFO space is unavailable.
+            yield();
+            // wait, but no longer than the timeout, for space to become
+            // available in the FIFO
+            if ((millis() - stallStart) >= _timeout) { return bytesSent; }
+            continue;
+        }
+        stallStart = 0;
         // Number of bytes to send from buffer in this command, equal to the
         // number of spaces available in the TX FIFO or the number of bytes
         // remaining in the buffer, whichever is smaller. We use a chunked
