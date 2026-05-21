@@ -233,6 +233,9 @@ void SC16IS7XX::digitalWriteExternal(uint8_t pin, uint8_t state) {
  * SC16IS7XX::pinMode, SC16IS7XX::digitalWrite, and SC16IS7XX::digitalRead
  * without the 'External' suffix. However, for the ESP32, use the 'External'
  * versions to avoid conflicts with built-in pin functions.
+ *
+ * @warning If GPIO interrups are configured for latching, the state returned by
+ * this function will not be valid.
  */
 uint8_t SC16IS7XX::digitalReadExternal(uint8_t pin) {
     Adafruit_BusIO_Register     IOState(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
@@ -355,6 +358,9 @@ void SC16IS7XX::setPortState(uint8_t state) {
 /**
  * @brief Read all GPIO states from the IOSTATE register.
  * @return uint8_t Current GPIO state bitmask.
+ *
+ * @warning If GPIO interrups are configured for latching, the states returned
+ * by this function will not be valid.
  */
 uint8_t SC16IS7XX::getPortState() {
     Adafruit_BusIO_Register IOState(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
@@ -404,6 +410,7 @@ void SC16IS7XX::setGPIOLatch(bool enabled) {
                                           SC16IS7XX_REG_IOCONTROL << 3);
     Adafruit_BusIO_RegisterBits latch_bit(&IOControl, 1, 0);
     latch_bit.write(enabled);
+    gpioInterruptsLatched = enabled;
 }
 
 
@@ -468,10 +475,20 @@ void SC16IS7XX::clearCallback(uint16_t callbackMask) {
  * to the interrupt.
  * @param pin the pin number on the port expander (0 - 7)
  * @param callback the function to call when the interrupt occurs
- * @warning The SC16IS7XX family of devices only supports pin change interrupts
+ * @remark The SC16IS7XX family of devices only supports pin change interrupts
  * and does not support pull-up or pull-down resistors, so anything put in the
  * mode parameter will be ignored. The interrupt will be triggered on any change
  * of the pin state.
+ * @warning If GPIO interrupts are not configured for latching, it is not
+ * possible to determine which pin triggered the interrupt.  This means any
+ * callback attached using this function will be called when any pin change
+ * interrupt occurs, regardless of which pin triggered the interrupt.  If you
+ * attempt to attach different functions to different pins without latching
+ * enabled, whichever function is attached last will be called.  To determine
+ * which pin triggered the interrupt, GPIO interrupts must be configured for
+ * latching using setGPIOLatch(true).  Unfortunately, enabling GPIO latching
+ * means that you cannot read the current value of any pin using
+ * digitalReadExternal or getPortState.
  */
 void SC16IS7XX::attachInterruptExternal(uint8_t pin, voidFxnPtr callback,
                                         uint8_t) {
@@ -480,9 +497,19 @@ void SC16IS7XX::attachInterruptExternal(uint8_t pin, voidFxnPtr callback,
         return;
     }
 
-    // mask for the position of the interrupt in the our list of callbacks
-    uint16_t pinMask      = 1 << pin;
-    uint16_t callbackMask = SC16IS7XX_IIR_GPIO << 8 | pinMask;
+    uint16_t callbackMask;
+
+    if (gpioInterruptsLatched) {
+        // If GPIO interrupts are latched, the callback mask includes the pin
+        // number so that we can determine which pin triggered the interrupt in
+        // the ISR.
+        callbackMask = SC16IS7XX_IIR_GPIO << 8 | (1 << pin);
+    } else {
+        // If GPIO interrupts are not latched, the callback mask does not
+        // include the pin number since we won't be able to determine which pin
+        // triggered the interrupt.
+        callbackMask = SC16IS7XX_IIR_GPIO << 8;
+    }
 
     // Store the interrupt callback.
     storeCallback(callbackMask, callback);
@@ -572,6 +599,16 @@ void SC16IS7XX::printInterruptSource(uint16_t callbackMask) {
             break;
         }
 
+        case SC16IS7XX_IIR_GPIO << 8: {
+            SC16IS750_DEBUG_SERIAL.println(
+                "GPIO pin change interrupt; unable to determine which pin "
+                "triggered the interrupt.");
+            SC16IS750_DEBUG_SERIAL.println(
+                "Use GPIO interrupt latching to determine which pin triggered "
+                "the interrupt.");
+            break;
+        }
+
         case SC16IS7XX_IIR_GPIO << 8 | (1 << 0):
         case SC16IS7XX_IIR_GPIO << 8 | (1 << 1):
         case SC16IS7XX_IIR_GPIO << 8 | (1 << 2):
@@ -585,6 +622,7 @@ void SC16IS7XX::printInterruptSource(uint16_t callbackMask) {
             SC16IS750_DEBUG_SERIAL.println(callbackMask & 0xFF);
             break;
         }
+
         default: {
             SC16IS750_DEBUG_SERIAL.print("Unknown interrupt source");
             SC16IS750_DEBUG_SERIAL.print(", callback mask hex: 0x");
@@ -693,11 +731,12 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
         // the pin state changes again - unless the interrupt is latched, then
         // it is only cleared by reading the IOState register
         case SC16IS7XX_IIR_GPIO: {
+            // if the pin change interrupt is not latched, we cannot know which
+            // pin triggered the interrupt
+            if (!gpioInterruptsLatched) { break; }
             // We use the upper byte to store the source of the
             // interrupt, and get which pin from the input register
-            Adafruit_BusIO_Register IOState(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
-                                            SC16IS7XX_REG_IOSTATE << 3);
-            uint8_t                 iostate = IOState.read();
+            uint8_t iostate = getPortState();
 #if defined(SC16IS750_DEBUG_SERIAL)
             SC16IS750_DEBUG_SERIAL.print("==IO State Register");
             SC16IS750_DEBUG_SERIAL.print(" hex: 0x");

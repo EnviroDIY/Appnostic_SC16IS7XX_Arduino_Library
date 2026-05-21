@@ -381,6 +381,16 @@ class SC16IS7XX {
     /// handling
     static SC16IS7XX* _activeObject;
 
+    /// flag to indicate whether the GPIO interrupts are configured for latching
+    /// or not. If not, the state of the pin at the time of the interrupt will
+    /// not be latched and the interrupt will be cleared when the IIR register
+    /// is read. If the GPIO interrupts are configured for latching, then the
+    /// state of the pin at the time of the interrupt will be latched and can be
+    /// read from the IOSTATE register, and the interrupt will only be cleared
+    /// when the state of the pin changes from its state at the time of the
+    /// interrupt.
+    bool gpioInterruptsLatched = false;
+
  public:
     /**
      * @brief Construct a new SC16IS7XX object.
