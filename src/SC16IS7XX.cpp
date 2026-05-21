@@ -204,7 +204,7 @@ void SC16IS7XX::pinModeExternal(uint8_t pin, uint8_t mode) {
     Adafruit_BusIO_Register     IODir(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                       SC16IS7XX_REG_IODIR << 3);
     Adafruit_BusIO_RegisterBits dir_bit(&IODir, 1, pin % 8);
-    dir_bit.write((mode == OUTPUT) ? 0 : 1);
+    dir_bit.write((mode == OUTPUT) ? 1 : 0);
 }
 
 /**
