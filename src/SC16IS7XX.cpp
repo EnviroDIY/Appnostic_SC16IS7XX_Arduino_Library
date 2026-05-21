@@ -507,8 +507,8 @@ void SC16IS7XX::callCallback(uint16_t callbackMask) {
  * means that you cannot read the current value of any pin using
  * digitalReadExternal or getPortState.
  */
-void SC16IS7XX::attachInterruptExternal(uint8_t pin, voidFxnPtr callback,
-                                        uint8_t) {
+void SC16IS7XX::attachPinInterrupt(uint8_t pin, voidFxnPtr callback,
+                                   uint8_t) {
     if (pin > 7) {
         // Invalid pin number, do nothing or handle error as needed
         return;
@@ -539,7 +539,7 @@ void SC16IS7XX::attachInterruptExternal(uint8_t pin, voidFxnPtr callback,
  * @brief Turns off the given interrupt.
  * @param pin the pin number on the port expander (0 - 7)
  */
-void SC16IS7XX::detachInterruptExternal(uint8_t pin) {
+void SC16IS7XX::detachPinInterrupt(uint8_t pin) {
     if (pin > 7) {
         // Invalid pin number, do nothing or handle error as needed
         return;
