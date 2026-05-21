@@ -676,7 +676,7 @@ void SC16IS7XX::printInterruptSource(uint16_t callbackMask) {
             }
 
             for (uint8_t pin = 0; pin < 8; pin++) {
-                if (((callbackMask & 0x00FF) & (1 << pin)) == (1 << pin)) {
+                if (((callbackMask & 0x00FFu) & (1 << pin)) == (1 << pin)) {
                     SC16IS752_DEBUG_SERIAL.print("GPIO pin change interrupt");
                     SC16IS752_DEBUG_SERIAL.print(", pin ");
                     SC16IS752_DEBUG_SERIAL.println(pin);
@@ -852,7 +852,7 @@ void ISR_MEM_ACCESS SC16IS7XX::handleInterrupt(uint16_t callbackMask) {
     // the pins and call the callback for each one.  For
     if (((callbackMask >> 8) == SC16IS7XX_IIR_GPIO) && gpioInterruptsLatched) {
         for (uint8_t pin = 0; pin < 8; pin++) {
-            if (((callbackMask & 0x00FF) & (1 << pin)) == (1 << pin)) {
+            if (((callbackMask & 0x00FFu) & (1 << pin)) == (1 << pin)) {
                 uint16_t searchCallbackMask = SC16IS7XX_IIR_GPIO << 8 |
                     (1 << pin);
                 callCallback(searchCallbackMask);
