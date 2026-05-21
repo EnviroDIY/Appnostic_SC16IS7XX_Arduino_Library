@@ -623,8 +623,8 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
 #endif  // SC16IS750_DEBUG_SERIAL
 
     // if there's no interrupt, return no interrupt mask
-    // bit 0 is the interrupt pending bit, 0 means there's no interrupt
-    if ((irq_reg & 0x01) == 0) {
+    // bit 0 is the interrupt pending bit, 1 means there's no interrupt
+    if ((irq_reg & 0x01) == 1) {
 #ifdef SC16IS750_DEBUG_SERIAL
         SC16IS750_DEBUG_SERIAL.println("====No interrupt pending");
 #endif  // SC16IS750_DEBUG_SERIAL
