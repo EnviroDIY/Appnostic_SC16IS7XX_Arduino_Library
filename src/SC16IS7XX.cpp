@@ -35,6 +35,31 @@ uint32_t SC16IS7XX::getCrystalFrequency() {
     return crystal_frequency;
 }
 
+/**
+ * @brief sets the GPIO pull direction.
+ * @param pullUp true for pull-up, false for pull-down
+ *
+ * @note While the documentation doesn't clearly say, the GPIO pins on the
+ * SC16IS7XX appear to have internal pull-up resistors.  I'm basing this on my
+ * testing - where the GPIO pins all ready high unless manually pulled low, and
+ * on the fact that when the GPIO pins are configured as modem pins, they are
+ * all active low implying they are being pulled up internally.
+ *
+ * @warning Only change this if your board has external pull-down resistors on
+ * the GPIO pins!
+ */
+void SC16IS7XX::setGPIOPullDirection(bool pullUp) {
+    gpioPullDirection = pullUp;
+}
+
+/**
+ * @brief gets the GPIO pull direction.
+ * @return true if pull-up, false if pull-down
+ */
+bool SC16IS7XX::getGPIOPullDirection() {
+    return gpioPullDirection;
+}
+
 /*** DEVICE *******************************************************/
 
 /**
@@ -199,6 +224,13 @@ void SC16IS7XX::end() {
  * SC16IS7XX::pinMode, SC16IS7XX::digitalWrite, and SC16IS7XX::digitalRead
  * without the 'External' suffix. However, for the ESP32, use the 'External'
  * versions to avoid conflicts with built-in pin functions.
+ *
+ * @remark While the documentation doesn't clearly say, the GPIO pins on the
+ * SC16IS7XX appear to have internal pull-up resistors.  I'm basing this on my
+ * testing - where the GPIO pins all ready high unless manually pulled low, and
+ * on the fact that when the GPIO pins are configured as modem pins, they are
+ * all active low implying they are being pulled up internally.  There is no way
+ * to change the pull resistor configuration.
  */
 void SC16IS7XX::pinModeExternal(uint8_t pin, uint8_t mode) {
     Adafruit_BusIO_Register     IODir(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
@@ -507,8 +539,7 @@ void SC16IS7XX::callCallback(uint16_t callbackMask) {
  * means that you cannot read the current value of any pin using
  * digitalReadExternal or getPortState.
  */
-void SC16IS7XX::attachPinInterrupt(uint8_t pin, voidFxnPtr callback,
-                                   uint8_t) {
+void SC16IS7XX::attachPinInterrupt(uint8_t pin, voidFxnPtr callback, uint8_t) {
     if (pin > 7) {
         // Invalid pin number, do nothing or handle error as needed
         return;
@@ -762,7 +793,8 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
             // We use the upper byte to store the source of the
             // interrupt, and get which pin from the input register
             uint8_t iostate = getPortState();
-            uint8_t iostate_i = ~iostate;
+            uint8_t iostate_i;
+            if (gpioPullDirection) { iostate_i = ~iostate; }
 #if defined(SC16IS752_DEBUG_SERIAL)
             SC16IS752_DEBUG_SERIAL.print("==IO State Register");
             SC16IS752_DEBUG_SERIAL.print(" hex: 0x");

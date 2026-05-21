@@ -361,6 +361,7 @@ typedef void (*voidFxnPtr)(void);
 class SC16IS7XX {
  private:
     uint32_t crystal_frequency = SC16IS7XX_DEFAULT_XTAL_FREQ;
+    bool gpioPullDirection = HIGH;  ///< false for pull-down, true for pull-up
 
     bool _init(void);
 
@@ -421,6 +422,8 @@ class SC16IS7XX {
     // configuration
     void     setCrystalFrequency(uint32_t frequency);
     uint32_t getCrystalFrequency();
+    void     setGPIOPullDirection(bool pullUp);
+    bool     getGPIOPullDirection();
 
     // gpio - need a uniquely named function for each of the digital read/write
     // and pin mode functions to not conflict with defines in some of the cores
