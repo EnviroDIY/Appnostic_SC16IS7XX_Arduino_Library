@@ -468,6 +468,23 @@ void SC16IS7XX::clearCallback(uint16_t callbackMask) {
     nints--;
 }
 
+/**
+ * @brief Calls the callback function associated with the given interrupt.
+ * @param callbackMask a bitmask representing the interrupt to call the
+ * callback for.
+ */
+void SC16IS7XX::callCallback(uint16_t callbackMask) {
+    // Find the position of the interrupt in the ISR list
+    uint8_t current;
+    for (current = 0; current < nints; current++) {
+        if (ISRlist[current] == callbackMask) { break; }
+    }
+    if (current == nints) return;  // We didn't have it
+
+    // Call the callback function if found
+    if (ISRcallback[current]) { ISRcallback[current](); }
+}
+
 
 /**
  * @brief Specifies a named Interrupt Service Routine (ISR) to call when a
@@ -547,80 +564,88 @@ void SC16IS7XX::detachInterruptExternal(uint8_t pin) {
  * to find the appropriate callback in the list of callbacks.
  */
 void SC16IS7XX::printInterruptSource(uint16_t callbackMask) {
-    switch (callbackMask) {
-        case SC16IS7XX_NO_INTERRUPT: {
+    uint16_t callbackIIR = callbackMask >> 8;  // upper byte is the IIR source
+
+    switch (callbackIIR) {
+        case SC16IS7XX_NO_INTERRUPT >> 8: {
             SC16IS752_DEBUG_SERIAL.println("No interrupt pending");
             break;
         }
-        case SC16IS7XX_INT_MASK_RI: {
-            SC16IS752_DEBUG_SERIAL.println("Ring Indicator Interrupt");
-            break;
-        }
-        case SC16IS7XX_INT_MASK_CD: {
-            SC16IS752_DEBUG_SERIAL.println("Carrier Detect Interrupt");
-            break;
-        }
-        case SC16IS7XX_INT_MASK_DSR: {
-            SC16IS752_DEBUG_SERIAL.println("Data Set Ready Interrupt");
-            break;
-        }
-        case SC16IS7XX_INT_MASK_DTR: {
-            SC16IS752_DEBUG_SERIAL.println("Data Terminal Ready Interrupt");
-            break;
-        }
-        case SC16IS7XX_INT_MASK_CTS: {
-            SC16IS752_DEBUG_SERIAL.println("Clear to Send Interrupt");
-            break;
-        }
-        case SC16IS7XX_INT_MASK_RTS: {
-            SC16IS752_DEBUG_SERIAL.println("Ready to Send Interrupt");
-            break;
+
+        case SC16IS7XX_IIR_MODEM: {
+            switch (callbackMask) {
+                case SC16IS7XX_INT_MASK_RI: {
+                    SC16IS752_DEBUG_SERIAL.println("Ring Indicator Interrupt");
+                    break;
+                }
+                case SC16IS7XX_INT_MASK_CD: {
+                    SC16IS752_DEBUG_SERIAL.println("Carrier Detect Interrupt");
+                    break;
+                }
+                case SC16IS7XX_INT_MASK_DSR: {
+                    SC16IS752_DEBUG_SERIAL.println("Data Set Ready Interrupt");
+                    break;
+                }
+                case SC16IS7XX_INT_MASK_DTR: {
+                    SC16IS752_DEBUG_SERIAL.println(
+                        "Data Terminal Ready Interrupt");
+                    break;
+                }
+            }
         }
 
-        case SC16IS7XX_INT_MASK_XOFF: {
+        case SC16IS7XX_IIR_CTSRTS: {
+            switch (callbackMask)
+            case SC16IS7XX_INT_MASK_CTS: {
+                SC16IS752_DEBUG_SERIAL.println("Clear to Send Interrupt");
+                break;
+            }
+            case SC16IS7XX_INT_MASK_RTS: {
+                SC16IS752_DEBUG_SERIAL.println("Ready to Send Interrupt");
+                break;
+            }
+        }
+
+        case SC16IS7XX_IIR_XOFF: {
             SC16IS752_DEBUG_SERIAL.println("XOFF Interrupt");
             break;
         }
-
-        case SC16IS7XX_INT_MASK_RLS: {
+        case SC16IS7XX_IIR_LINE: {
             SC16IS752_DEBUG_SERIAL.println("Line status error");
             break;
         }
-        case SC16IS7XX_INT_MASK_THR: {
+        case SC16IS7XX_IIR_THR: {
             SC16IS752_DEBUG_SERIAL.println("THR interrupt");
             break;
         }
-        case SC16IS7XX_INT_MASK_RHR: {
+        case SC16IS7XX_IIR_RHR: {
             SC16IS752_DEBUG_SERIAL.println("RHR interrupt");
             break;
         }
-        case SC16IS7XX_INT_MASK_TIMEOUT: {
+        case SC16IS7XX_IIR_TIMEOUT: {
             SC16IS752_DEBUG_SERIAL.println("Receiver time-out");
             break;
         }
 
-        case SC16IS7XX_IIR_GPIO << 8: {
-            SC16IS752_DEBUG_SERIAL.println(
-                "GPIO pin change interrupt; unable to determine which pin "
-                "triggered the interrupt.");
-            SC16IS752_DEBUG_SERIAL.println(
-                "Use GPIO interrupt latching to determine which pin triggered "
-                "the interrupt.");
-            break;
-        }
+        case SC16IS7XX_IIR_GPIO: {
+            if (gpioInterruptsLatched) {
+                SC16IS752_DEBUG_SERIAL.println(
+                    "GPIO pin change interrupt; unable to determine which pin "
+                    "triggered the interrupt.");
+                SC16IS752_DEBUG_SERIAL.println(
+                    "Use GPIO interrupt latching to determine which pin "
+                    "triggered the interrupt.");
+                break;
+            }
 
-        case SC16IS7XX_IIR_GPIO << 8 | (1 << 0):
-        case SC16IS7XX_IIR_GPIO << 8 | (1 << 1):
-        case SC16IS7XX_IIR_GPIO << 8 | (1 << 2):
-        case SC16IS7XX_IIR_GPIO << 8 | (1 << 3):
-        case SC16IS7XX_IIR_GPIO << 8 | (1 << 4):
-        case SC16IS7XX_IIR_GPIO << 8 | (1 << 5):
-        case SC16IS7XX_IIR_GPIO << 8 | (1 << 6):
-        case SC16IS7XX_IIR_GPIO << 8 | (1 << 7): {
-            SC16IS752_DEBUG_SERIAL.print("GPIO pin change interrupt");
-            SC16IS752_DEBUG_SERIAL.print(", pin ");
-            SC16IS752_DEBUG_SERIAL.println(callbackMask & 0xFF);
-            break;
+            for (uint8_t pin = 0; pin < 8; pin++) {
+                if ((callbackMask & 0x00FF) & (1 << pin) == (1 << pin)) {
+                    SC16IS752_DEBUG_SERIAL.print("GPIO pin change interrupt");
+                    SC16IS752_DEBUG_SERIAL.print(", pin ");
+                    SC16IS752_DEBUG_SERIAL.println(pin);
+                    break;
+                }
+            }
         }
 
         default: {
@@ -781,13 +806,20 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
  * On Espressif boards (ESP8266 and ESP32), the ISR must be stored in IRAM
  */
 void ISR_MEM_ACCESS SC16IS7XX::handleInterrupt(uint16_t callbackMask) {
-    // find the position of the interrupt in the our list of callbacks
-    uint8_t current;
-    for (current = 0; current < nints; current++) {
-        if (ISRlist[current] == callbackMask) { break; }
+    // Multiple GPIO pins can be masked in the same callbackMask, but we want to
+    // call the appropriate callback for each pin, so we need to loop through
+    // the pins and call the callback for each one.  For
+    if ((callbackMask >> 8) == SC16IS7XX_IIR_GPIO && gpioInterruptsLatched) {
+        for (uint8_t pin = 0; pin < 8; pin++) {
+            if ((callbackMask & 0x00FF) & (1 << pin) == (1 << pin)) {
+                uint16_t searchCallbackMask = SC16IS7XX_IIR_GPIO << 8 |
+                    (1 << pin);
+                callCallback(searchCallbackMask);
+            }
+        }
+    } else {
+        callCallback(callbackMask);
     }
-    // Call the callback function if found
-    if (current < nints && ISRcallback[current]) { ISRcallback[current](); }
 }
 
 /**

@@ -377,6 +377,7 @@ class SC16IS7XX {
 
     void storeCallback(uint16_t callbackMask, voidFxnPtr callback);
     void clearCallback(uint16_t callbackMask);
+    void callCallback(uint16_t callbackMask);
     /// static pointer to active SC16IS7XX instance, needed for easy ISR
     /// handling
     static SC16IS7XX* _activeObject;
