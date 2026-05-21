@@ -659,7 +659,7 @@ void SC16IS7XX::printInterruptSource(uint16_t callbackMask) {
         }
 
         case SC16IS7XX_IIR_GPIO: {
-            if (gpioInterruptsLatched) {
+            if (!gpioInterruptsLatched) {
                 SC16IS752_DEBUG_SERIAL.println(
                     "GPIO pin change interrupt; unable to determine which pin "
                     "triggered the interrupt.");
