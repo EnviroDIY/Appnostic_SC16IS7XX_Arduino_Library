@@ -482,7 +482,7 @@ void SC16IS7XX::attachInterruptExternal(uint8_t pin, voidFxnPtr callback,
 
     // mask for the position of the interrupt in the our list of callbacks
     uint16_t pinMask      = 1 << pin;
-    uint16_t callbackMask = SC16IS7XX_INT_GPIO << 8 | pinMask;
+    uint16_t callbackMask = SC16IS7XX_IIR_GPIO << 8 | pinMask;
 
     // Store the interrupt callback.
     storeCallback(callbackMask, callback);
@@ -506,7 +506,7 @@ void SC16IS7XX::detachInterruptExternal(uint8_t pin) {
 
     // mask for the position of the interrupt in the our list of callbacks
     uint16_t pinMask      = 1 << pin;
-    uint16_t callbackMask = SC16IS7XX_INT_GPIO << 8 | pinMask;
+    uint16_t callbackMask = SC16IS7XX_IIR_GPIO << 8 | pinMask;
 
     // clear the callback for the interrupt
     clearCallback(callbackMask);
@@ -549,29 +549,29 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
     switch (irq_src) {
         // Receiver Line Status Error - user must read all errored characters
         // from the RX FIFO to clear
-        case SC16IS7XX_INT_LINE:
+        case SC16IS7XX_IIR_LINE:
         // Receiver time-out interrupt interrupt will be cleared by the next
         // stop bit or by reading the IIR register
-        case SC16IS7XX_INT_TIMEOUT:
+        case SC16IS7XX_IIR_TIMEOUT:
         // RHR interrupt - user must read all enough from the RX FIFO to free
         // space to clear
-        case SC16IS7XX_INT_RHR:
+        case SC16IS7XX_IIR_RHR:
             // THR interrupt - the chip must successfully send enough data to
             // free space in the TX FIFO to clear
-        case SC16IS7XX_INT_THR:
+        case SC16IS7XX_IIR_THR:
         // XOFF interrupt is cleared by reading the IIR register or when an XON
         // character is received
-        case SC16IS7XX_INT_XOFF:
+        case SC16IS7XX_IIR_XOFF:
             // Only one type of interrupt with these IIR sources, no XOR needed
             // to differentiate.
             break;
 
         // modem interrupt (CD, RI, DSR, DTR) is cleared by reading the MSR
         // register or when the pin state changes again
-        case SC16IS7XX_INT_MODEM:
+        case SC16IS7XX_IIR_MODEM:
         // CTS,RTS is cleared by reading the MSR register or when the pin state
         // changes again
-        case SC16IS7XX_INT_CTSRTS: {
+        case SC16IS7XX_IIR_CTSRTS: {
             // We use the upper byte to store the source of the
             // interrupt, but we need to differentiate between modem and
             // CTS/RTS interrupts since they share the same IIR code
@@ -586,7 +586,7 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
         // pin change interrupt, cleared by reading the IOState register or when
         // the pin state changes again - unless the interrupt is latched, then
         // it is only cleared by reading the IOState register
-        case SC16IS7XX_INT_GPIO: {
+        case SC16IS7XX_IIR_GPIO: {
             // We use the upper byte to store the source of the
             // interrupt, and get which pin from the input register
             Adafruit_BusIO_Register IOState(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
@@ -600,8 +600,9 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
 
     return callbackMask;
 }
+
 /**
- * @brief The actual ISR that is called when an interrupt occurs.
+ * @brief The ISR that is called when an interrupt occurs.
  *
  * It gets the source of the interrupt and calls the appropriate callback
  * function if it is found in the list of callbacks.

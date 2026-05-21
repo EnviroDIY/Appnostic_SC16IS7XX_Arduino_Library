@@ -218,16 +218,16 @@
  */
 /**@{*/
 // Listed from increasing to decreasing priority
-#define SC16IS7XX_INT_LINE (0X06)     ///< Line Interrupt 0b00000110
-#define SC16IS7XX_INT_TIMEOUT (0X0c)  ///< Timeout Interrupt 0b00001100
-#define SC16IS7XX_INT_RHR \
+#define SC16IS7XX_IIR_LINE (0X06)     ///< Line Interrupt 0b00000110
+#define SC16IS7XX_IIR_TIMEOUT (0X0c)  ///< Timeout Interrupt 0b00001100
+#define SC16IS7XX_IIR_RHR \
     (0X04)  ///< Receive Holding Register Interrupt 0b00000100
-#define SC16IS7XX_INT_THR \
+#define SC16IS7XX_IIR_THR \
     (0X02)  ///< Transmit Holding Register Interrupt 0b00000010
-#define SC16IS7XX_INT_MODEM (0X00)   ///< Modem Interrupt 0b00000000
-#define SC16IS7XX_INT_GPIO (0x30)    ///< GPIO Interrupt 0b00110000
-#define SC16IS7XX_INT_XOFF (0X10)    ///< XOFF Interrupt 0b00010000
-#define SC16IS7XX_INT_CTSRTS (0X20)  ///< CTS/RTS Interrupt 0b00100000
+#define SC16IS7XX_IIR_MODEM (0X00)   ///< Modem Interrupt 0b00000000
+#define SC16IS7XX_IIR_GPIO (0x30)    ///< GPIO Interrupt 0b00110000
+#define SC16IS7XX_IIR_XOFF (0X10)    ///< XOFF Interrupt 0b00010000
+#define SC16IS7XX_IIR_CTSRTS (0X20)  ///< CTS/RTS Interrupt 0b00100000
 /**@}*/
 
 /**
@@ -307,33 +307,35 @@
  */
 /**@{*/
 #define SC16IS7XX_INT_MASK_RI   \
-    (SC16IS7XX_INT_MODEM << 8 | \
-     SC16IS7XX_MSR_DELTA_RI)  ///< RI Interrupt bitmask
+    (SC16IS7XX_IIR_MODEM << 8 | \
+1 << SC16IS7XX_MSR_DELTA_RI)  ///< RI Interrupt bitmask
 #define SC16IS7XX_INT_MASK_CD   \
-    (SC16IS7XX_INT_MODEM << 8 | \
-     SC16IS7XX_MSR_DELTA_CD)  ///< CD Interrupt bitmask
+    (SC16IS7XX_IIR_MODEM << 8 | \
+1 << SC16IS7XX_MSR_DELTA_CD)  ///< CD Interrupt bitmask
 #define SC16IS7XX_INT_MASK_DSR  \
-    (SC16IS7XX_INT_MODEM << 8 | \
-     SC16IS7XX_MSR_DELTA_DSR)  ///< DSR Interrupt bitmask
+    (SC16IS7XX_IIR_MODEM << 8 | \
+1 << SC16IS7XX_MSR_DELTA_DSR)  ///< DSR Interrupt bitmask
 #define SC16IS7XX_INT_MASK_CTS   \
-    (SC16IS7XX_INT_CTSRTS << 8 | \
-     SC16IS7XX_MSR_DELTA_CTS)  ///< CTS Interrupt bitmask
+    (SC16IS7XX_IIR_CTSRTS << 8 | \
+1 << SC16IS7XX_MSR_DELTA_CTS)  ///< CTS Interrupt bitmask
 
 #define SC16IS7XX_INT_MASK_DTR \
-    (SC16IS7XX_INT_MODEM << 8)  ///< DTR Interrupt bitmask (no MRS bits set)
+    (SC16IS7XX_IIR_MODEM << 8)  ///< DTR Interrupt bitmask (no MRS bits set)
 #define SC16IS7XX_INT_MASK_RTS \
-    (SC16IS7XX_INT_CTSRTS << 8)  ///< RTS Interrupt bitmask (no MRS bits set)
+    (SC16IS7XX_IIR_CTSRTS << 8)  ///< RTS Interrupt bitmask (no MRS bits set)
 
 #define SC16IS7XX_INT_MASK_XOFF \
-    (SC16IS7XX_INT_XOFF << 8)  ///< XOFF Interrupt bitmask
+    (SC16IS7XX_IIR_XOFF << 8)  ///< XOFF Interrupt bitmask
 #define SC16IS7XX_INT_MASK_RLS \
-    (SC16IS7XX_INT_LINE << 8)  ///< Line Status Interrupt bitmask
+    (SC16IS7XX_IIR_LINE << 8)  ///< Line Status Interrupt bitmask
 #define SC16IS7XX_INT_MASK_THR \
-    (SC16IS7XX_INT_THR << 8)  ///< THR Interrupt bitmask
+    (SC16IS7XX_IIR_THR << 8)  ///< THR Interrupt bitmask
 #define SC16IS7XX_INT_MASK_RHR \
-    (SC16IS7XX_INT_RHR << 8)  ///< RHR Interrupt bitmask
+    (SC16IS7XX_IIR_RHR << 8)  ///< RHR Interrupt bitmask
 #define SC16IS7XX_INT_MASK_TIMEOUT \
-    (SC16IS7XX_INT_TIMEOUT << 8)  ///< Timeout Interrupt bitmask
+    (SC16IS7XX_IIR_TIMEOUT << 8)  ///< Timeout Interrupt bitmask
+
+#define SC16IS7XX_NO_INTERRUPT (0XFFFF)  ///< Bitmask for no interrupt
 
 
 /**@}*/
