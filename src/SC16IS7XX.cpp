@@ -512,16 +512,88 @@ void SC16IS7XX::detachInterruptExternal(uint8_t pin) {
     clearCallback(callbackMask);
 }
 
+
+#ifdef SC16IS750_DEBUG_SERIAL
 /**
- * @brief Checks if any interrupts are pending by reading the IIR register.
- * @return True if an interrupt is pending, false otherwise.
+ * @brief Print out the source of the interrupt
  */
-bool SC16IS7XX::getInterruptStatus() {
-    Adafruit_BusIO_Register     IIR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
-                                    SC16IS7XX_REG_IIR << 3);
-    Adafruit_BusIO_RegisterBits pending_bit(&IIR, 1, 0);
-    return pending_bit.read();  // Check the interrupt pending bit
+void SC16IS7XX::printInterruptSource(uint16_t callbackMask) {
+    switch (callbackMask) {
+        case SC16IS7XX_NO_INTERRUPT: {
+            SC16IS750_DEBUG_SERIAL.println("No interrupt pending");
+            break;
+        }
+        case SC16IS7XX_INT_MASK_RI: {
+            SC16IS750_DEBUG_SERIAL.println("Ring Indicator Interrupt");
+            break;
+        }
+        case SC16IS7XX_INT_MASK_CD: {
+            SC16IS750_DEBUG_SERIAL.println("Carrier Detect Interrupt");
+            break;
+        }
+        case SC16IS7XX_INT_MASK_DSR: {
+            SC16IS750_DEBUG_SERIAL.println("Data Set Ready Interrupt");
+            break;
+        }
+        case SC16IS7XX_INT_MASK_DTR: {
+            SC16IS750_DEBUG_SERIAL.println("Data Terminal Ready Interrupt");
+            break;
+        }
+        case SC16IS7XX_INT_MASK_CTS: {
+            SC16IS750_DEBUG_SERIAL.println("Clear to Send Interrupt");
+            break;
+        }
+        case SC16IS7XX_INT_MASK_RTS: {
+            SC16IS750_DEBUG_SERIAL.println("Ready to Send Interrupt");
+            break;
+        }
+
+        case SC16IS7XX_INT_MASK_XOFF: {
+            SC16IS750_DEBUG_SERIAL.println("XOFF Interrupt");
+            break;
+        }
+
+        case SC16IS7XX_INT_MASK_RLS: {
+            SC16IS750_DEBUG_SERIAL.println("Line status error");
+            break;
+        }
+        case SC16IS7XX_INT_MASK_THR: {
+            SC16IS750_DEBUG_SERIAL.println("THR interrupt");
+            break;
+        }
+        case SC16IS7XX_INT_MASK_RHR: {
+            SC16IS750_DEBUG_SERIAL.println("RHR interrupt");
+            break;
+        }
+        case SC16IS7XX_INT_MASK_TIMEOUT: {
+            SC16IS750_DEBUG_SERIAL.println("Receiver time-out");
+            break;
+        }
+
+        case SC16IS7XX_IIR_GPIO << 8 | (1 << 0):
+        case SC16IS7XX_IIR_GPIO << 8 | (1 << 1):
+        case SC16IS7XX_IIR_GPIO << 8 | (1 << 2):
+        case SC16IS7XX_IIR_GPIO << 8 | (1 << 3):
+        case SC16IS7XX_IIR_GPIO << 8 | (1 << 4):
+        case SC16IS7XX_IIR_GPIO << 8 | (1 << 5):
+        case SC16IS7XX_IIR_GPIO << 8 | (1 << 6):
+        case SC16IS7XX_IIR_GPIO << 8 | (1 << 7): {
+            SC16IS750_DEBUG_SERIAL.print("GPIO pin change interrupt");
+            SC16IS750_DEBUG_SERIAL.print(", pin ");
+            SC16IS750_DEBUG_SERIAL.println(callbackMask & 0xFF);
+            break;
+        }
+        default: {
+            SC16IS750_DEBUG_SERIAL.print("Unknown interrupt source");
+            SC16IS750_DEBUG_SERIAL.print(", callback mask hex: 0x");
+            SC16IS750_DEBUG_SERIAL.print(callbackMask, HEX);
+            SC16IS750_DEBUG_SERIAL.print(", bin: 0b");
+            SC16IS750_DEBUG_SERIAL.println(callbackMask, BIN);
+            break;
+        }
+    }
 }
+#endif  // SC16IS750_DEBUG_SERIAL
 
 
 /**
@@ -535,13 +607,33 @@ bool SC16IS7XX::getInterruptStatus() {
 uint16_t SC16IS7XX::getInterruptSource(void) {
     // Calling the routine directly from -here- takes about 1us
     // Depending on where you are in the list it will take longer
-    uint8_t                 irq_src;
     Adafruit_BusIO_Register IIR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                 SC16IS7XX_REG_IIR << 3);
 
-    // get the interrupt source
-    irq_src = IIR.read() & 0x3E;
-    //^ mask off the FCR[7:6] and interrupt pending [0] bits 0b00111110
+    // read the interrupt source register, store it as 16 bits to have room to
+    // store additional information about the interrupt source in the lower byte
+    uint16_t irq_reg = IIR.read();
+
+#if defined(SC16IS750_DEBUG_SERIAL)
+    SC16IS750_DEBUG_SERIAL.print("==Interrupt Identification Register");
+    SC16IS750_DEBUG_SERIAL.print(" hex: 0x");
+    SC16IS750_DEBUG_SERIAL.print(irq_reg, HEX);
+    SC16IS750_DEBUG_SERIAL.print(", bin: 0b");
+    SC16IS750_DEBUG_SERIAL.println(irq_reg, BIN);
+#endif  // SC16IS750_DEBUG_SERIAL
+
+    // if there's no interrupt, return no interrupt mask
+    // bit 0 is the interrupt pending bit, 0 means there's no interrupt
+    if ((irq_reg & 0x01) == 0) {
+#ifdef SC16IS750_DEBUG_SERIAL
+        SC16IS750_DEBUG_SERIAL.println("====No interrupt pending");
+#endif  // SC16IS750_DEBUG_SERIAL
+        return SC16IS7XX_NO_INTERRUPT;
+    }
+
+    // mask off the FCR mirror [7:6] and interrupt pending [0] bits with 0x3E =
+    // 0b00111110 to get the interrupt source
+    uint16_t irq_src = irq_reg & 0x3E;
 
     uint16_t callbackMask = irq_src
         << 8;  // We use the upper byte to store the source
@@ -579,6 +671,13 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
                 i2c_dev, spi_dev, SC16IS7XX_SPIREG, SC16IS7XX_REG_MSR << 3);
             uint8_t modemStatus = modemStatusReg.read() & 0x0F;
             //^ keep the bottom 4 bits which are the delta bits
+#if defined(SC16IS750_DEBUG_SERIAL)
+            SC16IS750_DEBUG_SERIAL.print("==Modem Status Register");
+            SC16IS750_DEBUG_SERIAL.print(" hex: 0x");
+            SC16IS750_DEBUG_SERIAL.print(modemStatus, HEX);
+            SC16IS750_DEBUG_SERIAL.print(", bin: 0b");
+            SC16IS750_DEBUG_SERIAL.println(modemStatus, BIN);
+#endif  // SC16IS750_DEBUG_SERIAL
             callbackMask |= modemStatus;
             break;
         }
@@ -591,12 +690,27 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
             // interrupt, and get which pin from the input register
             Adafruit_BusIO_Register IOState(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                             SC16IS7XX_REG_IOSTATE << 3);
-            uint8_t                 iostate = IOState.read() & 0x0F;
+            uint8_t                 iostate = IOState.read();
+#if defined(SC16IS750_DEBUG_SERIAL)
+            SC16IS750_DEBUG_SERIAL.print("==IO State Register");
+            SC16IS750_DEBUG_SERIAL.print(" hex: 0x");
+            SC16IS750_DEBUG_SERIAL.print(iostate, HEX);
+            SC16IS750_DEBUG_SERIAL.print(", bin: 0b");
+            SC16IS750_DEBUG_SERIAL.println(iostate, BIN);
+#endif  // SC16IS750_DEBUG_SERIAL
             callbackMask |= iostate;
             break;
         }
         default: break;
     }
+
+#if defined(SC16IS750_DEBUG_SERIAL)
+    SC16IS750_DEBUG_SERIAL.print("====Interrupt source callback mask");
+    SC16IS750_DEBUG_SERIAL.print(" hex: 0x");
+    SC16IS750_DEBUG_SERIAL.print(callbackMask, HEX);
+    SC16IS750_DEBUG_SERIAL.print(", bin: 0b");
+    SC16IS750_DEBUG_SERIAL.println(callbackMask, BIN);
+#endif  // SC16IS750_DEBUG_SERIAL
 
     return callbackMask;
 }
@@ -605,13 +719,15 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
  * @brief The ISR that is called when an interrupt occurs.
  *
  * It gets the source of the interrupt and calls the appropriate callback
- * function if it is found in the list of callbacks.
+ * function if it is found in the list of callbacks.  This should only be called
+ * by the static handleInterrupt function attached to a hardware interrupt, and
+ * should not be called directly.  The handleInterrupt function will call this
+ * function on the active object to allow for multiple SC16IS7XX objects to use
+ * interrupts without conflict.
  *
  * On Espressif boards (ESP8266 and ESP32), the ISR must be stored in IRAM
  */
-void ISR_MEM_ACCESS SC16IS7XX::interruptHandler(void) {
-    uint16_t callbackMask = getInterruptSource();
-
+void ISR_MEM_ACCESS SC16IS7XX::handleInterrupt(uint16_t callbackMask) {
     // find the position of the interrupt in the our list of callbacks
     uint8_t current;
     for (current = 0; current < nints; current++) {
@@ -627,8 +743,9 @@ void ISR_MEM_ACCESS SC16IS7XX::interruptHandler(void) {
  *
  * On Espressif boards (ESP8266 and ESP32), the ISR must be stored in IRAM
  */
-void ISR_MEM_ACCESS SC16IS7XX::handleInterrupt() {
-    if (_activeObject) _activeObject->interruptHandler();
+void ISR_MEM_ACCESS SC16IS7XX::interruptHandler() {
+    if (_activeObject)
+        _activeObject->handleInterrupt(_activeObject->getInterruptSource());
 }
 
 // cSpell:words SPIFREQ SPIREG MISO MOSI

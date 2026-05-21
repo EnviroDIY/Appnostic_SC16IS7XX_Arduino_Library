@@ -308,16 +308,16 @@
 /**@{*/
 #define SC16IS7XX_INT_MASK_RI   \
     (SC16IS7XX_IIR_MODEM << 8 | \
-1 << SC16IS7XX_MSR_DELTA_RI)  ///< RI Interrupt bitmask
+     1 << SC16IS7XX_MSR_DELTA_RI)  ///< RI Interrupt bitmask
 #define SC16IS7XX_INT_MASK_CD   \
     (SC16IS7XX_IIR_MODEM << 8 | \
-1 << SC16IS7XX_MSR_DELTA_CD)  ///< CD Interrupt bitmask
+     1 << SC16IS7XX_MSR_DELTA_CD)  ///< CD Interrupt bitmask
 #define SC16IS7XX_INT_MASK_DSR  \
     (SC16IS7XX_IIR_MODEM << 8 | \
-1 << SC16IS7XX_MSR_DELTA_DSR)  ///< DSR Interrupt bitmask
+     1 << SC16IS7XX_MSR_DELTA_DSR)  ///< DSR Interrupt bitmask
 #define SC16IS7XX_INT_MASK_CTS   \
     (SC16IS7XX_IIR_CTSRTS << 8 | \
-1 << SC16IS7XX_MSR_DELTA_CTS)  ///< CTS Interrupt bitmask
+     1 << SC16IS7XX_MSR_DELTA_CTS)  ///< CTS Interrupt bitmask
 
 #define SC16IS7XX_INT_MASK_DTR \
     (SC16IS7XX_IIR_MODEM << 8)  ///< DTR Interrupt bitmask (no MRS bits set)
@@ -456,10 +456,12 @@ class SC16IS7XX {
 
     void setGPIOLatch(bool enabled);
 
-    bool        getInterruptStatus();
-    uint16_t    getInterruptSource();
-    void        interruptHandler(void);
-    static void handleInterrupt(void);
+    uint16_t getInterruptSource();
+#ifdef SC16IS750_DEBUG_SERIAL
+    void printInterruptSource(uint16_t callbackMask);
+#endif  // SC16IS750_DEBUG_SERIAL
+    void        handleInterrupt(uint16_t callbackMask);
+    static void interruptHandler(void);
 };
 
 #endif  // _SC16IS7XX_H_

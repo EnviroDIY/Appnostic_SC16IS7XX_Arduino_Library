@@ -63,6 +63,12 @@ void setup() {
 }
 
 void loop() {
-    if (ExtSerial.getInterruptStatus()) { ExtSerial.interruptHandler(); }
+    uint16_t callbackMask = ExtSerial.getInterruptSource();
+    if (callbackMask != SC16IS7XX_NO_INTERRUPT) {
+#ifdef SC16IS750_DEBUG_SERIAL
+        ExtSerial.printInterruptSource(callbackMask);
+#endif  // SC16IS750_DEBUG_SERIAL
+        ExtSerial.handleInterrupt(callbackMask);
+    }
     delay(100);
 }

@@ -73,7 +73,7 @@ void setup() {
     attachInterrupt(digitalPinToInterrupt(SC16IS7XX_IRQ_PIN), onInterrupt,
                     FALLING);  // interrupt transitions from high to low
 #else
-    attachInterrupt(SC16IS7XX_IRQ_PIN, SC16IS7XX::handleInterrupt,
+    attachInterrupt(SC16IS7XX_IRQ_PIN, SC16IS7XX::interruptHandler,
                     FALLING);  // interrupt transitions from high to low
 #endif
 }
