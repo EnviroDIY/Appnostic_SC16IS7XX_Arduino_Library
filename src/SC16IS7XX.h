@@ -409,10 +409,27 @@ class SC16IS7XX {
     void     setCrystalFrequency(uint32_t frequency);
     uint32_t getCrystalFrequency();
 
-    // gpio
-    virtual void    pinMode(uint8_t pin, uint8_t mode);
-    virtual void    digitalWrite(uint8_t pin, uint8_t state);
-    virtual uint8_t digitalRead(uint8_t pin);
+    // gpio - need a uniquely named function for each of the digital read/write
+    // and pin mode functions to not conflict with defines in some of the cores
+    void    pinModeExternal(uint8_t pin, uint8_t mode);
+    void    digitalWriteExternal(uint8_t pin, uint8_t state);
+    uint8_t digitalReadExternal(uint8_t pin);
+#if !(defined(ESP32) && defined(ESP_ARDUINO_VERSION_MAJOR) && \
+      ESP_ARDUINO_VERSION_MAJOR <= 2)
+    // for cores without conflict, these are simpler
+    /// @copydoc SC16IS7XX::pinModeEx
+    void pinMode(uint8_t pin, uint8_t mode) {
+        pinModeExternal(pin, mode);
+    };
+    /// @copydoc SC16IS7XX::digitalWriteEx
+    void digitalWrite(uint8_t pin, uint8_t state) {
+        digitalWriteExternal(pin, state);
+    };
+    /// @copydoc SC16IS7XX::digitalReadEx
+    uint8_t digitalRead(uint8_t pin) {
+        return digitalRead(pin);
+    };
+#endif
 
     void enableSleepMode(bool enabled);
     bool isSleepEnabled();
