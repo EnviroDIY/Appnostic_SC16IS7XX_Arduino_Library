@@ -172,9 +172,9 @@ void SC16IS752::setBaudrate(uint32_t baudRate) {
 #ifdef SC16IS750_DEBUG_PRINT
     float actual_baudrate = (getCrystalFrequency() / prescaler) /
         (16 * divisor);
-    float error = (actual_baudrate - baudrate) * 100 / baudrate;
+    float error = (actual_baudrate - baudRate) * 100 / baudRate;
     Serial.print("Desired baudrate: ");
-    Serial.println(baudrate, DEC);
+    Serial.println(baudRate, DEC);
     Serial.print("Prescaler: ");
     Serial.println(prescaler, DEC);
     Serial.print("Calculated divisor: ");
