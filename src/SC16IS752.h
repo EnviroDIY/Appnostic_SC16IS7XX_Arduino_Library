@@ -74,6 +74,7 @@ class SC16IS752 : public SC16IS7XX, public Stream {
     bool    _peek_flag = 0;  ///< Flag to indicate if there's a peeked byte
     int _peek_buf = -1;  ///< peeked byte value, valid only if _peek_flag is set
 
+    uint8_t FIFOAvailableData();
     uint8_t FIFOAvailableSpace();
     int     rawRead();
     int     rawRead(uint8_t* buf, size_t size);

@@ -779,6 +779,7 @@ void SC16IS752::detachTimeoutInterrupt() {
  */
 void SC16IS752::begin(unsigned long baud, uint8_t config) {
     if (_activeObject != this) { _activeObject = this; }
+    enableFIFO(true);
     setBaudrate(baud);
     setLine(config);
 }
@@ -807,6 +808,7 @@ void SC16IS752::begin(unsigned long baud, SC16IS7XXSerialConfig config) {
 void SC16IS752::begin(unsigned long baud, uint8_t dataBits, uint8_t parity,
                       uint8_t stopBits) {
     if (_activeObject != this) { _activeObject = this; }
+    enableFIFO(true);
     setBaudrate(baud);
     setLine(dataBits, parity, stopBits);
 }
@@ -823,13 +825,37 @@ void SC16IS752::begin(unsigned long baud) {
 }
 
 /**
+ * @brief Get number of bytes available in RX FIFO.
+ * @return uint8_t Number of available bytes in RX FIFO.
+ */
+uint8_t SC16IS752::FIFOAvailableData() {
+    Adafruit_BusIO_Register RXLVL(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                  (SC16IS7XX_REG_RXLVL << 3 | _channel << 1));
+#ifdef SC16IS750_DEBUG_PRINT
+    int available_bytes = RXLVL.read();
+    Serial.print("=====RX FIFO Available data:");
+    Serial.println(available_bytes, DEC);
+    return available_bytes;
+#else
+    return RXLVL.read();
+#endif  // SC16IS750_DEBUG_PRINT
+}
+
+/**
  * @brief Get free space in TX FIFO.
  * @return uint8_t Number of available TX FIFO slots.
  */
 uint8_t SC16IS752::FIFOAvailableSpace() {
     Adafruit_BusIO_Register TXLVL(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                   (SC16IS7XX_REG_TXLVL << 3 | _channel << 1));
+#ifdef SC16IS750_DEBUG_PRINT
+    int available_bytes = TXLVL.read();
+    Serial.print("=====TX FIFO Available space:");
+    Serial.println(available_bytes, DEC);
+    return available_bytes;
+#else
     return TXLVL.read();
+#endif  // SC16IS750_DEBUG_PRINT
 }
 
 /**
@@ -837,12 +863,22 @@ uint8_t SC16IS752::FIFOAvailableSpace() {
  * @return int Byte value, or -1 when no data is available.
  */
 int SC16IS752::rawRead() {
+    // We need to check if anything is in the buffer before trying to read,
+    // otherwise the SC16IS752 will return whatever stale data is in the RHR
+    // register from the last time it was read, even if that data has already
+    // been read from the FIFO.
+    if (FIFOAvailableData() == 0) { return -1; }
     Adafruit_BusIO_Register RHR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                 (SC16IS7XX_REG_RHR << 3 | _channel << 1));
     return RHR.read();
 }
 
 int SC16IS752::rawRead(uint8_t* buf, size_t size) {
+    // We need to check if anything is in the buffer before trying to read,
+    // otherwise the SC16IS752 will return whatever stale data is in the RHR
+    // register from the last time it was read, even if that data has already
+    // been read from the FIFO.
+    if (FIFOAvailableData() == 0) { return -1; }
     Adafruit_BusIO_Register RHR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                 (SC16IS7XX_REG_RHR << 3 | _channel << 1));
     return RHR.read(buf, size);
@@ -856,6 +892,10 @@ int SC16IS752::rawRead(uint8_t* buf, size_t size) {
 int SC16IS752::read() {
     // if there's a peeked byte, return that instead of reading from the FIFO
     if (_peek_flag) {
+#ifdef SC16IS750_DEBUG_PRINT
+        Serial.print("==Returning peeked byte: ");
+        Serial.println(static_cast<char>(_peek_buf));
+#endif  // SC16IS750_DEBUG_PRINT
         _peek_flag = 0;
         return _peek_buf;
     }
@@ -875,6 +915,10 @@ int SC16IS752::read(uint8_t* buf, size_t size) {
     // if there's a peeked byte, place that in the first position of the buffer
     // and read the rest from the FIFO
     if (_peek_flag) {
+#ifdef SC16IS750_DEBUG_PRINT
+        Serial.print("==Appending peeked byte: ");
+        Serial.println(static_cast<char>(_peek_buf));
+#endif  // SC16IS750_DEBUG_PRINT
         _peek_flag = 0;
         *buf       = _peek_buf;
         return rawRead(buf + 1, size - 1) + 1;
@@ -888,16 +932,10 @@ int SC16IS752::read(uint8_t* buf, size_t size) {
  * @return int Number of readable bytes.
  */
 int SC16IS752::available() {
-    Adafruit_BusIO_Register RXLVL(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
-                                  (SC16IS7XX_REG_RXLVL << 3 | _channel << 1));
 #ifdef SC16IS750_DEBUG_PRINT
-    int available_bytes = RXLVL.read();
-    Serial.print("=====Available data:");
-    Serial.println(available_bytes, DEC);
-    return available_bytes;
-#else
-    return RXLVL.read();
+    if (_peek_flag) { Serial.println("==Available: 1 byte in peek buffer"); }
 #endif  // SC16IS750_DEBUG_PRINT
+    return FIFOAvailableData() + (_peek_flag ? 1 : 0);
 }
 
 /**
