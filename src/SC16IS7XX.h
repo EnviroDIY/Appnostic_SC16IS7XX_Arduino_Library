@@ -467,9 +467,9 @@ class SC16IS7XX {
     void setGPIOLatch(bool enabled);
 
     uint16_t getInterruptSource();
-#ifdef SC16IS750_DEBUG_SERIAL
+#ifdef SC16IS752_DEBUG_SERIAL
     void printInterruptSource(uint16_t callbackMask);
-#endif  // SC16IS750_DEBUG_SERIAL
+#endif  // SC16IS752_DEBUG_SERIAL
     void        handleInterrupt(uint16_t callbackMask);
     static void interruptHandler(void);
 };

@@ -540,7 +540,7 @@ void SC16IS7XX::detachInterruptExternal(uint8_t pin) {
 }
 
 
-#ifdef SC16IS750_DEBUG_SERIAL
+#ifdef SC16IS752_DEBUG_SERIAL
 /**
  * @brief Print out the source of the interrupt
  * @param callbackMask A bitmask representing the source of the interrupt, used
@@ -549,61 +549,61 @@ void SC16IS7XX::detachInterruptExternal(uint8_t pin) {
 void SC16IS7XX::printInterruptSource(uint16_t callbackMask) {
     switch (callbackMask) {
         case SC16IS7XX_NO_INTERRUPT: {
-            SC16IS750_DEBUG_SERIAL.println("No interrupt pending");
+            SC16IS752_DEBUG_SERIAL.println("No interrupt pending");
             break;
         }
         case SC16IS7XX_INT_MASK_RI: {
-            SC16IS750_DEBUG_SERIAL.println("Ring Indicator Interrupt");
+            SC16IS752_DEBUG_SERIAL.println("Ring Indicator Interrupt");
             break;
         }
         case SC16IS7XX_INT_MASK_CD: {
-            SC16IS750_DEBUG_SERIAL.println("Carrier Detect Interrupt");
+            SC16IS752_DEBUG_SERIAL.println("Carrier Detect Interrupt");
             break;
         }
         case SC16IS7XX_INT_MASK_DSR: {
-            SC16IS750_DEBUG_SERIAL.println("Data Set Ready Interrupt");
+            SC16IS752_DEBUG_SERIAL.println("Data Set Ready Interrupt");
             break;
         }
         case SC16IS7XX_INT_MASK_DTR: {
-            SC16IS750_DEBUG_SERIAL.println("Data Terminal Ready Interrupt");
+            SC16IS752_DEBUG_SERIAL.println("Data Terminal Ready Interrupt");
             break;
         }
         case SC16IS7XX_INT_MASK_CTS: {
-            SC16IS750_DEBUG_SERIAL.println("Clear to Send Interrupt");
+            SC16IS752_DEBUG_SERIAL.println("Clear to Send Interrupt");
             break;
         }
         case SC16IS7XX_INT_MASK_RTS: {
-            SC16IS750_DEBUG_SERIAL.println("Ready to Send Interrupt");
+            SC16IS752_DEBUG_SERIAL.println("Ready to Send Interrupt");
             break;
         }
 
         case SC16IS7XX_INT_MASK_XOFF: {
-            SC16IS750_DEBUG_SERIAL.println("XOFF Interrupt");
+            SC16IS752_DEBUG_SERIAL.println("XOFF Interrupt");
             break;
         }
 
         case SC16IS7XX_INT_MASK_RLS: {
-            SC16IS750_DEBUG_SERIAL.println("Line status error");
+            SC16IS752_DEBUG_SERIAL.println("Line status error");
             break;
         }
         case SC16IS7XX_INT_MASK_THR: {
-            SC16IS750_DEBUG_SERIAL.println("THR interrupt");
+            SC16IS752_DEBUG_SERIAL.println("THR interrupt");
             break;
         }
         case SC16IS7XX_INT_MASK_RHR: {
-            SC16IS750_DEBUG_SERIAL.println("RHR interrupt");
+            SC16IS752_DEBUG_SERIAL.println("RHR interrupt");
             break;
         }
         case SC16IS7XX_INT_MASK_TIMEOUT: {
-            SC16IS750_DEBUG_SERIAL.println("Receiver time-out");
+            SC16IS752_DEBUG_SERIAL.println("Receiver time-out");
             break;
         }
 
         case SC16IS7XX_IIR_GPIO << 8: {
-            SC16IS750_DEBUG_SERIAL.println(
+            SC16IS752_DEBUG_SERIAL.println(
                 "GPIO pin change interrupt; unable to determine which pin "
                 "triggered the interrupt.");
-            SC16IS750_DEBUG_SERIAL.println(
+            SC16IS752_DEBUG_SERIAL.println(
                 "Use GPIO interrupt latching to determine which pin triggered "
                 "the interrupt.");
             break;
@@ -617,23 +617,23 @@ void SC16IS7XX::printInterruptSource(uint16_t callbackMask) {
         case SC16IS7XX_IIR_GPIO << 8 | (1 << 5):
         case SC16IS7XX_IIR_GPIO << 8 | (1 << 6):
         case SC16IS7XX_IIR_GPIO << 8 | (1 << 7): {
-            SC16IS750_DEBUG_SERIAL.print("GPIO pin change interrupt");
-            SC16IS750_DEBUG_SERIAL.print(", pin ");
-            SC16IS750_DEBUG_SERIAL.println(callbackMask & 0xFF);
+            SC16IS752_DEBUG_SERIAL.print("GPIO pin change interrupt");
+            SC16IS752_DEBUG_SERIAL.print(", pin ");
+            SC16IS752_DEBUG_SERIAL.println(callbackMask & 0xFF);
             break;
         }
 
         default: {
-            SC16IS750_DEBUG_SERIAL.print("Unknown interrupt source");
-            SC16IS750_DEBUG_SERIAL.print(", callback mask hex: 0x");
-            SC16IS750_DEBUG_SERIAL.print(callbackMask, HEX);
-            SC16IS750_DEBUG_SERIAL.print(", bin: 0b");
-            SC16IS750_DEBUG_SERIAL.println(callbackMask, BIN);
+            SC16IS752_DEBUG_SERIAL.print("Unknown interrupt source");
+            SC16IS752_DEBUG_SERIAL.print(", callback mask hex: 0x");
+            SC16IS752_DEBUG_SERIAL.print(callbackMask, HEX);
+            SC16IS752_DEBUG_SERIAL.print(", bin: 0b");
+            SC16IS752_DEBUG_SERIAL.println(callbackMask, BIN);
             break;
         }
     }
 }
-#endif  // SC16IS750_DEBUG_SERIAL
+#endif  // SC16IS752_DEBUG_SERIAL
 
 
 /**
@@ -659,20 +659,20 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
     // store additional information about the interrupt source in the lower byte
     uint16_t irq_reg = IIR.read();
 
-#if defined(SC16IS750_DEBUG_SERIAL)
-    SC16IS750_DEBUG_SERIAL.print("==Interrupt Identification Register");
-    SC16IS750_DEBUG_SERIAL.print(" hex: 0x");
-    SC16IS750_DEBUG_SERIAL.print(irq_reg, HEX);
-    SC16IS750_DEBUG_SERIAL.print(", bin: 0b");
-    SC16IS750_DEBUG_SERIAL.println(irq_reg, BIN);
-#endif  // SC16IS750_DEBUG_SERIAL
+#if defined(SC16IS752_DEBUG_SERIAL)
+    SC16IS752_DEBUG_SERIAL.print("==Interrupt Identification Register");
+    SC16IS752_DEBUG_SERIAL.print(" hex: 0x");
+    SC16IS752_DEBUG_SERIAL.print(irq_reg, HEX);
+    SC16IS752_DEBUG_SERIAL.print(", bin: 0b");
+    SC16IS752_DEBUG_SERIAL.println(irq_reg, BIN);
+#endif  // SC16IS752_DEBUG_SERIAL
 
     // if there's no interrupt, return no interrupt mask
     // bit 0 is the interrupt pending bit, 1 means there's no interrupt
     if ((irq_reg & 0x01) == 1) {
-#ifdef SC16IS750_DEBUG_SERIAL
-        SC16IS750_DEBUG_SERIAL.println("====No interrupt pending");
-#endif  // SC16IS750_DEBUG_SERIAL
+#ifdef SC16IS752_DEBUG_SERIAL
+        SC16IS752_DEBUG_SERIAL.println("====No interrupt pending");
+#endif  // SC16IS752_DEBUG_SERIAL
         return SC16IS7XX_NO_INTERRUPT;
     }
 
@@ -716,13 +716,13 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
                 i2c_dev, spi_dev, SC16IS7XX_SPIREG, SC16IS7XX_REG_MSR << 3);
             uint8_t modemStatus = modemStatusReg.read() & 0x0F;
             //^ keep the bottom 4 bits which are the delta bits
-#if defined(SC16IS750_DEBUG_SERIAL)
-            SC16IS750_DEBUG_SERIAL.print("==Modem Status Register");
-            SC16IS750_DEBUG_SERIAL.print(" hex: 0x");
-            SC16IS750_DEBUG_SERIAL.print(modemStatus, HEX);
-            SC16IS750_DEBUG_SERIAL.print(", bin: 0b");
-            SC16IS750_DEBUG_SERIAL.println(modemStatus, BIN);
-#endif  // SC16IS750_DEBUG_SERIAL
+#if defined(SC16IS752_DEBUG_SERIAL)
+            SC16IS752_DEBUG_SERIAL.print("==Modem Status Register");
+            SC16IS752_DEBUG_SERIAL.print(" hex: 0x");
+            SC16IS752_DEBUG_SERIAL.print(modemStatus, HEX);
+            SC16IS752_DEBUG_SERIAL.print(", bin: 0b");
+            SC16IS752_DEBUG_SERIAL.println(modemStatus, BIN);
+#endif  // SC16IS752_DEBUG_SERIAL
             callbackMask |= modemStatus;
             break;
         }
@@ -737,26 +737,26 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
             // We use the upper byte to store the source of the
             // interrupt, and get which pin from the input register
             uint8_t iostate = getPortState();
-#if defined(SC16IS750_DEBUG_SERIAL)
-            SC16IS750_DEBUG_SERIAL.print("==IO State Register");
-            SC16IS750_DEBUG_SERIAL.print(" hex: 0x");
-            SC16IS750_DEBUG_SERIAL.print(iostate, HEX);
-            SC16IS750_DEBUG_SERIAL.print(", bin: 0b");
-            SC16IS750_DEBUG_SERIAL.println(iostate, BIN);
-#endif  // SC16IS750_DEBUG_SERIAL
+#if defined(SC16IS752_DEBUG_SERIAL)
+            SC16IS752_DEBUG_SERIAL.print("==IO State Register");
+            SC16IS752_DEBUG_SERIAL.print(" hex: 0x");
+            SC16IS752_DEBUG_SERIAL.print(iostate, HEX);
+            SC16IS752_DEBUG_SERIAL.print(", bin: 0b");
+            SC16IS752_DEBUG_SERIAL.println(iostate, BIN);
+#endif  // SC16IS752_DEBUG_SERIAL
             callbackMask |= ~iostate;
             break;
         }
         default: break;
     }
 
-#if defined(SC16IS750_DEBUG_SERIAL)
-    SC16IS750_DEBUG_SERIAL.print("====Interrupt source callback mask");
-    SC16IS750_DEBUG_SERIAL.print(" hex: 0x");
-    SC16IS750_DEBUG_SERIAL.print(callbackMask, HEX);
-    SC16IS750_DEBUG_SERIAL.print(", bin: 0b");
-    SC16IS750_DEBUG_SERIAL.println(callbackMask, BIN);
-#endif  // SC16IS750_DEBUG_SERIAL
+#if defined(SC16IS752_DEBUG_SERIAL)
+    SC16IS752_DEBUG_SERIAL.print("====Interrupt source callback mask");
+    SC16IS752_DEBUG_SERIAL.print(" hex: 0x");
+    SC16IS752_DEBUG_SERIAL.print(callbackMask, HEX);
+    SC16IS752_DEBUG_SERIAL.print(", bin: 0b");
+    SC16IS752_DEBUG_SERIAL.println(callbackMask, BIN);
+#endif  // SC16IS752_DEBUG_SERIAL
 
     return callbackMask;
 }
