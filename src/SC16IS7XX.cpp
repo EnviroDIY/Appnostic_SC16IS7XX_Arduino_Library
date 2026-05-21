@@ -762,6 +762,7 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
             // We use the upper byte to store the source of the
             // interrupt, and get which pin from the input register
             uint8_t iostate = getPortState();
+            uint8_t iostate_i = ~iostate;
 #if defined(SC16IS752_DEBUG_SERIAL)
             SC16IS752_DEBUG_SERIAL.print("==IO State Register");
             SC16IS752_DEBUG_SERIAL.print(" hex: 0x");
@@ -769,7 +770,7 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
             SC16IS752_DEBUG_SERIAL.print(", bin: 0b");
             SC16IS752_DEBUG_SERIAL.println(iostate, BIN);
 #endif  // SC16IS752_DEBUG_SERIAL
-            callbackMask |= ~iostate;
+            callbackMask |= iostate_i;
             break;
         }
         default: break;
