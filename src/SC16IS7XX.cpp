@@ -744,7 +744,7 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
             SC16IS750_DEBUG_SERIAL.print(", bin: 0b");
             SC16IS750_DEBUG_SERIAL.println(iostate, BIN);
 #endif  // SC16IS750_DEBUG_SERIAL
-            callbackMask |= iostate;
+            callbackMask |= ~iostate;
             break;
         }
         default: break;
