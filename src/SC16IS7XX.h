@@ -417,17 +417,17 @@ class SC16IS7XX {
 #if !(defined(ESP32) && defined(ESP_ARDUINO_VERSION_MAJOR) && \
       ESP_ARDUINO_VERSION_MAJOR <= 2)
     // for cores without conflict, these are simpler
-    /// @copydoc SC16IS7XX::pinModeEx
+    /// @copydoc SC16IS7XX::pinModeExternal
     void pinMode(uint8_t pin, uint8_t mode) {
         pinModeExternal(pin, mode);
     };
-    /// @copydoc SC16IS7XX::digitalWriteEx
+    /// @copydoc SC16IS7XX::digitalWriteExternal
     void digitalWrite(uint8_t pin, uint8_t state) {
         digitalWriteExternal(pin, state);
     };
-    /// @copydoc SC16IS7XX::digitalReadEx
+    /// @copydoc SC16IS7XX::digitalReadExternal
     uint8_t digitalRead(uint8_t pin) {
-        return digitalRead(pin);
+        return digitalReadExternal(pin);
     };
 #endif
 

@@ -41,8 +41,8 @@ void setup() {
     // set the pin mode
     // NOTE: For everything except the ESP32 , you could simply use
     // `ExtSerial.pinMode` and `ExtSerial.digitalWrite` here, but for the ESP32,
-    // we need to use the 'Ex' versions of these functions to avoid conflicts
-    // with the built-in pin functions.
+    // we need to use the 'External' versions of these functions to avoid
+    // conflicts with the built-in pin functions.
     ExtSerial.pinModeExternal(GPIO_PIN, OUTPUT);
     // set the pin low to start
     ExtSerial.digitalWriteExternal(GPIO_PIN, LOW);
@@ -50,9 +50,9 @@ void setup() {
 
 void loop() {
     // NOTE: For everything except the ESP32 , you could simply use
-    // `ExtSerial.digitalWrite` here, but for the ESP32, we need to use the 'Ex'
-    // versions of these functions to avoid conflicts with the built-in pin
-    // functions.
+    // `ExtSerial.digitalWrite` here, but for the ESP32, we need to use the
+    // 'External' versions of these functions to avoid conflicts with the
+    // built-in pin functions.
     ExtSerial.digitalWriteExternal(GPIO_PIN, HIGH);
     delay(500);
     ExtSerial.digitalWriteExternal(GPIO_PIN, LOW);

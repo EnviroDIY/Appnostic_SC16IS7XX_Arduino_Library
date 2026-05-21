@@ -195,11 +195,10 @@ void SC16IS7XX::end() {
  * @param pin the output pin number on the port expander (0 - 7)
  * @param mode The pin mode, either INPUT or OUTPUT
  *
- * @note For all cores *except* the ESP32, you can simply use the
+ * @note For all cores *except* the ESP32, you can simply use
  * SC16IS7XX::pinMode, SC16IS7XX::digitalWrite, and SC16IS7XX::digitalRead
- * functions without the 'Ex' suffix. However, for the ESP32, we need to use the
- * 'Ex' versions of these functions to avoid conflicts with the built-in pin
- * functions.
+ * without the 'External' suffix. However, for the ESP32, use the 'External'
+ * versions to avoid conflicts with built-in pin functions.
  */
 void SC16IS7XX::pinModeExternal(uint8_t pin, uint8_t mode) {
     Adafruit_BusIO_Register     IODir(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
@@ -213,11 +212,10 @@ void SC16IS7XX::pinModeExternal(uint8_t pin, uint8_t mode) {
  * @param pin the output pin number on the port expander (0 - 7)
  * @param state the pin state, either LOW (0) or HIGH (1)
  *
- * @note For all cores *except* the ESP32, you can simply use the
+ * @note For all cores *except* the ESP32, you can simply use
  * SC16IS7XX::pinMode, SC16IS7XX::digitalWrite, and SC16IS7XX::digitalRead
- * functions without the 'Ex' suffix. However, for the ESP32, we need to use the
- * 'Ex' versions of these functions to avoid conflicts with the built-in pin
- * functions.
+ * without the 'External' suffix. However, for the ESP32, use the 'External'
+ * versions to avoid conflicts with built-in pin functions.
  */
 void SC16IS7XX::digitalWriteExternal(uint8_t pin, uint8_t state) {
     Adafruit_BusIO_Register     IOState(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
@@ -231,10 +229,10 @@ void SC16IS7XX::digitalWriteExternal(uint8_t pin, uint8_t state) {
  * @param pin the pin number on the port expander (0 - 7)
  * @return the pin state, either LOW (0) or HIGH (1)
  *
- * @note For all cores *except* the ESP32, you can simply use the 'pinMode',
- * 'digitalWrite', and 'digitalRead' functions without the 'Ex' suffix. However,
- * for the ESP32, we need to use the 'Ex' versions of these functions to avoid
- * conflicts with the built-in pin functions.
+ * @note For all cores *except* the ESP32, you can simply use
+ * SC16IS7XX::pinMode, SC16IS7XX::digitalWrite, and SC16IS7XX::digitalRead
+ * without the 'External' suffix. However, for the ESP32, use the 'External'
+ * versions to avoid conflicts with built-in pin functions.
  */
 uint8_t SC16IS7XX::digitalReadExternal(uint8_t pin) {
     Adafruit_BusIO_Register     IOState(i2c_dev, spi_dev, SC16IS7XX_SPIREG,

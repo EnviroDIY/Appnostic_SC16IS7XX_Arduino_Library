@@ -24,10 +24,10 @@ SC16IS752 ExtSerial(SC16IS752_CHANNEL_A);
 #define SC16IS7XX_IRQ_PIN 3
 #define LED_PIN 9
 void onInterrupt() {
-    // NOTE: For everything except the ESP32 , you could simply use
-    // `ExtSerial.digitalRead` here, but for the ESP32, we need to use the 'Ex'
-    // versions of these functions to avoid conflicts with the built-in pin
-    // functions.
+    // NOTE: For everything except the ESP32, you could simply use
+    // `ExtSerial.digitalRead` here, but for the ESP32, we need to use the
+    // 'External' version of this function to avoid conflicts with the built-in
+    // pin functions.
     digitalWrite(LED_PIN, !ExtSerial.digitalReadExternal(GPIO_PIN));
 }
 
