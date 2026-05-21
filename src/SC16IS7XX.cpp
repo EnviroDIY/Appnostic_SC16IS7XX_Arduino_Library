@@ -511,7 +511,13 @@ void SC16IS7XX::callCallback(uint16_t callbackMask) {
     for (current = 0; current < nints; current++) {
         if (ISRlist[current] == callbackMask) { break; }
     }
-    if (current == nints) return;  // We didn't have it
+    // if we didn't have that callback
+    if (current == nints) {
+#if defined(SC16IS752_DEBUG_SERIAL)
+        SC16IS752_DEBUG_SERIAL.println("======Matching callback not found!");
+#endif  // SC16IS752_DEBUG_SERIAL
+        return;
+    }
 
     // Call the callback function if found
     if (ISRcallback[current]) { ISRcallback[current](); }
@@ -670,13 +676,13 @@ void SC16IS7XX::printInterruptSource(uint16_t callbackMask) {
             }
 
             for (uint8_t pin = 0; pin < 8; pin++) {
-                if ((callbackMask & 0x00FF) & (1 << pin) == (1 << pin)) {
+                if (((callbackMask & 0x00FF) & (1 << pin)) == (1 << pin)) {
                     SC16IS752_DEBUG_SERIAL.print("GPIO pin change interrupt");
                     SC16IS752_DEBUG_SERIAL.print(", pin ");
                     SC16IS752_DEBUG_SERIAL.println(pin);
-                    break;
                 }
             }
+            break;
         }
 
         default: {
@@ -736,8 +742,8 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
     // 0b00111110 to get the interrupt source
     uint16_t irq_src = irq_reg & 0x3E;
 
-    uint16_t callbackMask = irq_src
-        << 8;  // We use the upper byte to store the source
+    // Push the source of the interrupt into the upper byte of the callback mask
+    uint16_t callbackMask = irq_src << 8;
 
     switch (irq_src) {
         // Receiver Line Status Error - user must read all errored characters
@@ -765,8 +771,7 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
         // CTS,RTS is cleared by reading the MSR register or when the pin state
         // changes again
         case SC16IS7XX_IIR_CTSRTS: {
-            // We use the upper byte to store the source of the
-            // interrupt, but we need to differentiate between modem and
+            // Get the modem status to differentiate between modem and
             // CTS/RTS interrupts since they share the same IIR code
             Adafruit_BusIO_Register modemStatusReg(
                 i2c_dev, spi_dev, SC16IS7XX_SPIREG, SC16IS7XX_REG_MSR << 3);
@@ -779,6 +784,7 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
             SC16IS752_DEBUG_SERIAL.print(", bin: 0b");
             SC16IS752_DEBUG_SERIAL.println(modemStatus, BIN);
 #endif  // SC16IS752_DEBUG_SERIAL
+        // tack the modem status bits onto the callback mask
             callbackMask |= modemStatus;
             break;
         }
@@ -790,11 +796,12 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
             // if the pin change interrupt is not latched, we cannot know which
             // pin triggered the interrupt
             if (!gpioInterruptsLatched) { break; }
-            // We use the upper byte to store the source of the
-            // interrupt, and get which pin from the input register
+
+            // Get which pin from the input register
             uint8_t iostate = getPortState();
-            uint8_t iostate_i;
-            if (gpioPullDirection) { iostate_i = ~iostate; }
+            // flip the state if needed
+            uint16_t iostate_i = iostate & 0xFF;
+            if (gpioPullDirection) { iostate_i = ~iostate & 0xFF; }
 #if defined(SC16IS752_DEBUG_SERIAL)
             SC16IS752_DEBUG_SERIAL.print("==IO State Register");
             SC16IS752_DEBUG_SERIAL.print(" hex: 0x");
@@ -802,6 +809,7 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
             SC16IS752_DEBUG_SERIAL.print(", bin: 0b");
             SC16IS752_DEBUG_SERIAL.println(iostate, BIN);
 #endif  // SC16IS752_DEBUG_SERIAL
+        // tack the io bits onto the callback mask
             callbackMask |= iostate_i;
             break;
         }
@@ -842,9 +850,9 @@ void ISR_MEM_ACCESS SC16IS7XX::handleInterrupt(uint16_t callbackMask) {
     // Multiple GPIO pins can be masked in the same callbackMask, but we want to
     // call the appropriate callback for each pin, so we need to loop through
     // the pins and call the callback for each one.  For
-    if ((callbackMask >> 8) == SC16IS7XX_IIR_GPIO && gpioInterruptsLatched) {
+    if (((callbackMask >> 8) == SC16IS7XX_IIR_GPIO) && gpioInterruptsLatched) {
         for (uint8_t pin = 0; pin < 8; pin++) {
-            if ((callbackMask & 0x00FF) & (1 << pin) == (1 << pin)) {
+            if (((callbackMask & 0x00FF) & (1 << pin)) == (1 << pin)) {
                 uint16_t searchCallbackMask = SC16IS7XX_IIR_GPIO << 8 |
                     (1 << pin);
                 callCallback(searchCallbackMask);
