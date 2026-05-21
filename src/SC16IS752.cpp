@@ -169,21 +169,21 @@ void SC16IS752::setBaudrate(uint32_t baudRate) {
     if (sleep_enabled) { enableSleepMode(true); }
 
 
-#ifdef SC16IS750_DEBUG_PRINT
+#ifdef SC16IS750_DEBUG_SERIAL
     float actual_baudrate = (getCrystalFrequency() / prescaler) /
         (16 * divisor);
     float error = (actual_baudrate - baudRate) * 100 / baudRate;
-    Serial.print("Desired baudrate: ");
-    Serial.println(baudRate, DEC);
-    Serial.print("Prescaler: ");
-    Serial.println(prescaler, DEC);
-    Serial.print("Calculated divisor: ");
-    Serial.println(divisor, DEC);
-    Serial.print("Actual baudrate: ");
-    Serial.println(actual_baudrate, DEC);
-    Serial.print("Baudrate error: ");
-    Serial.println(error, DEC);
-#endif  // SC16IS750_DEBUG_PRINT
+    SC16IS750_DEBUG_SERIAL.print("Desired baudrate: ");
+    SC16IS750_DEBUG_SERIAL.println(baudRate, DEC);
+    SC16IS750_DEBUG_SERIAL.print("Prescaler: ");
+    SC16IS750_DEBUG_SERIAL.println(prescaler, DEC);
+    SC16IS750_DEBUG_SERIAL.print("Calculated divisor: ");
+    SC16IS750_DEBUG_SERIAL.println(divisor, DEC);
+    SC16IS750_DEBUG_SERIAL.print("Actual baudrate: ");
+    SC16IS750_DEBUG_SERIAL.println(actual_baudrate, DEC);
+    SC16IS750_DEBUG_SERIAL.print("Baudrate error: ");
+    SC16IS750_DEBUG_SERIAL.println(error, DEC);
+#endif  // SC16IS750_DEBUG_SERIAL
 }
 
 /**
@@ -200,10 +200,10 @@ void SC16IS752::setLine(uint8_t dataBits, uint8_t parity, uint8_t stopBits) {
     uint8_t tmp_lcr = LCR.read();
     tmp_lcr &= 0xC0;  // Clear the lower six bit of LCR (LCR[0] to LCR[5]
 
-#ifdef SC16IS750_DEBUG_PRINT
-    Serial.print("LCR Register:0x");
-    Serial.println(tmp_lcr, DEC);
-#endif  // SC16IS750_DEBUG_PRINT
+#ifdef SC16IS750_DEBUG_SERIAL
+    SC16IS750_DEBUG_SERIAL.print("LCR Register:0x");
+    SC16IS750_DEBUG_SERIAL.println(tmp_lcr, DEC);
+#endif  // SC16IS750_DEBUG_SERIAL
 
     // data bit length
     // LCR[0:1]
@@ -831,14 +831,14 @@ void SC16IS752::begin(unsigned long baud) {
 uint8_t SC16IS752::FIFOAvailableData() {
     Adafruit_BusIO_Register RXLVL(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                   (SC16IS7XX_REG_RXLVL << 3 | _channel << 1));
-#ifdef SC16IS750_DEBUG_PRINT
+#ifdef SC16IS750_DEBUG_SERIAL
     int available_bytes = RXLVL.read();
-    Serial.print("=====RX FIFO Available data:");
-    Serial.println(available_bytes, DEC);
+    SC16IS750_DEBUG_SERIAL.print("=====RX FIFO Available data:");
+    SC16IS750_DEBUG_SERIAL.println(available_bytes, DEC);
     return available_bytes;
 #else
     return RXLVL.read();
-#endif  // SC16IS750_DEBUG_PRINT
+#endif  // SC16IS750_DEBUG_SERIAL
 }
 
 /**
@@ -848,14 +848,14 @@ uint8_t SC16IS752::FIFOAvailableData() {
 uint8_t SC16IS752::FIFOAvailableSpace() {
     Adafruit_BusIO_Register TXLVL(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                   (SC16IS7XX_REG_TXLVL << 3 | _channel << 1));
-#ifdef SC16IS750_DEBUG_PRINT
+#ifdef SC16IS750_DEBUG_SERIAL
     int available_bytes = TXLVL.read();
-    Serial.print("=====TX FIFO Available space:");
-    Serial.println(available_bytes, DEC);
+    SC16IS750_DEBUG_SERIAL.print("=====TX FIFO Available space:");
+    SC16IS750_DEBUG_SERIAL.println(available_bytes, DEC);
     return available_bytes;
 #else
     return TXLVL.read();
-#endif  // SC16IS750_DEBUG_PRINT
+#endif  // SC16IS750_DEBUG_SERIAL
 }
 
 /**
@@ -892,10 +892,10 @@ int SC16IS752::rawRead(uint8_t* buf, size_t size) {
 int SC16IS752::read() {
     // if there's a peeked byte, return that instead of reading from the FIFO
     if (_peek_flag) {
-#ifdef SC16IS750_DEBUG_PRINT
-        Serial.print("==Returning peeked byte: ");
-        Serial.println(static_cast<char>(_peek_buf));
-#endif  // SC16IS750_DEBUG_PRINT
+#ifdef SC16IS750_DEBUG_SERIAL
+        SC16IS750_DEBUG_SERIAL.print("==Returning peeked byte: ");
+        SC16IS750_DEBUG_SERIAL.println(static_cast<char>(_peek_buf));
+#endif  // SC16IS750_DEBUG_SERIAL
         _peek_flag = 0;
         return _peek_buf;
     }
@@ -915,10 +915,10 @@ int SC16IS752::read(uint8_t* buf, size_t size) {
     // if there's a peeked byte, place that in the first position of the buffer
     // and read the rest from the FIFO
     if (_peek_flag) {
-#ifdef SC16IS750_DEBUG_PRINT
-        Serial.print("==Appending peeked byte: ");
-        Serial.println(static_cast<char>(_peek_buf));
-#endif  // SC16IS750_DEBUG_PRINT
+#ifdef SC16IS750_DEBUG_SERIAL
+        SC16IS750_DEBUG_SERIAL.print("==Appending peeked byte: ");
+        SC16IS750_DEBUG_SERIAL.println(static_cast<char>(_peek_buf));
+#endif  // SC16IS750_DEBUG_SERIAL
         _peek_flag = 0;
         *buf       = _peek_buf;
         return rawRead(buf + 1, size - 1) + 1;
@@ -932,9 +932,11 @@ int SC16IS752::read(uint8_t* buf, size_t size) {
  * @return int Number of readable bytes.
  */
 int SC16IS752::available() {
-#ifdef SC16IS750_DEBUG_PRINT
-    if (_peek_flag) { Serial.println("==Available: 1 byte in peek buffer"); }
-#endif  // SC16IS750_DEBUG_PRINT
+#ifdef SC16IS750_DEBUG_SERIAL
+    if (_peek_flag) {
+        SC16IS750_DEBUG_SERIAL.println("==Available: 1 byte in peek buffer");
+    }
+#endif  // SC16IS750_DEBUG_SERIAL
     return FIFOAvailableData() + (_peek_flag ? 1 : 0);
 }
 
