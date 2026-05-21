@@ -219,6 +219,16 @@ void SC16IS752::setLine(uint8_t dataBits, uint8_t parity, uint8_t stopBits) {
     LCR.write(tmp_lcr);
 }
 
+/**
+ * @brief Set line parameters using a pre-defined config enum value.
+ *
+ * @param config The typed configuration enum encoding the data bits, parity,
+ * and stop bits.
+ */
+void SC16IS752::setLine(SC16IS7XXSerialConfig config) {
+    setLine(static_cast<uint8_t>(config));
+}
+
 
 /**
  * @brief Set line parameters using a pre-defined config value, aligned with
@@ -735,6 +745,19 @@ void SC16IS752::begin(unsigned long baud, uint8_t config) {
     setBaudrate(baud);
     setLine(config);
 }
+
+/**
+ * @brief Begin UART communication with specified baud rate and typed
+ * configuration enum.
+ *
+ * @param baud The baud rate to set for UART communication.
+ * @param config The typed configuration enum encoding the data bits, parity,
+ * and stop bits.
+ */
+void SC16IS752::begin(unsigned long baud, SC16IS7XXSerialConfig config) {
+    begin(baud, static_cast<uint8_t>(config));
+}
+
 /**
  * @brief Begin UART communication with specified baud rate and configuration
  *
@@ -759,7 +782,7 @@ void SC16IS752::begin(unsigned long baud, uint8_t dataBits, uint8_t parity,
  * @param baud The baud rate to set for UART communication.
  */
 void SC16IS752::begin(unsigned long baud) {
-    begin(baud, SC16IS7XX_SERIAL_8N1);
+    begin(baud, SC16IS7XXSerialConfig::C8N1);
 }
 
 /**
