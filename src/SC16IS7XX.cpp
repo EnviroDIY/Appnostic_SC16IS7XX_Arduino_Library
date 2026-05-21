@@ -516,6 +516,8 @@ void SC16IS7XX::detachInterruptExternal(uint8_t pin) {
 #ifdef SC16IS750_DEBUG_SERIAL
 /**
  * @brief Print out the source of the interrupt
+ * @param callbackMask A bitmask representing the source of the interrupt, used
+ * to find the appropriate callback in the list of callbacks.
  */
 void SC16IS7XX::printInterruptSource(uint16_t callbackMask) {
     switch (callbackMask) {
@@ -603,6 +605,11 @@ void SC16IS7XX::printInterruptSource(uint16_t callbackMask) {
  * contains the IIR source, while the lower byte contains additional information
  * about the source (e.g. which pin triggered a GPIO interrupt or the delta bits
  * for a modem interrupt).
+ *
+ * @warning Calling this function will **clear** most types of interrupts. It
+ * will return a different result if polled twice in a row.  If you want to use
+ * the result of this function in more than one place, you must store it in a
+ * variable instead of calling this function multiple times.
  */
 uint16_t SC16IS7XX::getInterruptSource(void) {
     // Calling the routine directly from -here- takes about 1us
@@ -716,14 +723,21 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
 }
 
 /**
- * @brief The ISR that is called when an interrupt occurs.
+ * @brief  This calls the appropriate callback function if it is found in the
+ * list of callbacks.
  *
- * It gets the source of the interrupt and calls the appropriate callback
- * function if it is found in the list of callbacks.  This should only be called
- * by the static handleInterrupt function attached to a hardware interrupt, and
- * should not be called directly.  The handleInterrupt function will call this
- * function on the active object to allow for multiple SC16IS7XX objects to use
- * interrupts without conflict.
+ * You should first call getInterruptSource() to get the source of the
+ * interrupt, then pass the result of that function to this function to call the
+ * appropriate callback.  Do **not** call the getInterruptSource() function
+ * multiple times in a row, as it will clear most types of interrupts.  Store
+ * the result of getInterruptSource() in a variable if you need to use it in
+ * more than one place.
+ *
+ * If you are attaching an interrupt to a pin on your MCU, you should use the
+ * interruptHandler() function instead.
+ *
+ * @param callbackMask A bitmask representing the source of the interrupt, used
+ * to find the appropriate callback in the list of callbacks.
  *
  * On Espressif boards (ESP8266 and ESP32), the ISR must be stored in IRAM
  */
@@ -740,6 +754,10 @@ void ISR_MEM_ACCESS SC16IS7XX::handleInterrupt(uint16_t callbackMask) {
 /**
  * @brief Intermediary used by the ISR - passes off responsibility for the
  * interrupt to the active object.
+ *
+ * This function is intended to be called by the actual ISR that is attached to
+ * the interrupt pin on your MCU. It will delegate the handling of the interrupt
+ * to the active SC16IS7XX object.
  *
  * On Espressif boards (ESP8266 and ESP32), the ISR must be stored in IRAM
  */
