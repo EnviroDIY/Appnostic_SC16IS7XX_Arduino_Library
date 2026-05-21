@@ -414,9 +414,8 @@ class SC16IS7XX {
     void    pinModeExternal(uint8_t pin, uint8_t mode);
     void    digitalWriteExternal(uint8_t pin, uint8_t state);
     uint8_t digitalReadExternal(uint8_t pin);
-    void    attachInterruptExternal(uint8_t pin, voidFxnPtr callback,
-                                    uint8_t mode = 0);
-    void    detachInterruptExternal(uint8_t pin);
+    void attachInterruptExternal(uint8_t pin, voidFxnPtr callback, uint8_t = 0);
+    void detachInterruptExternal(uint8_t pin);
 #if !(defined(ESP32) && defined(ESP_ARDUINO_VERSION_MAJOR) && \
       ESP_ARDUINO_VERSION_MAJOR <= 2)
     // for cores without conflict, these are simpler
@@ -433,8 +432,8 @@ class SC16IS7XX {
         return digitalReadExternal(pin);
     };
     /// @copydoc SC16IS7XX::attachInterruptExternal
-    void attachInterrupt(uint8_t pin, voidFxnPtr callback, uint8_t mode = 0) {
-        attachInterruptExternal(pin, callback, mode);
+    void attachInterrupt(uint8_t pin, voidFxnPtr callback, uint8_t = 0) {
+        attachInterruptExternal(pin, callback);
     };
     /// @copydoc SC16IS7XX::detachInterruptExternal
     void detachInterrupt(uint8_t pin) {
