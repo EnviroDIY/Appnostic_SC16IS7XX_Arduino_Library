@@ -126,13 +126,27 @@ void SC16IS752::setBaudrate(uint32_t baudRate) {
         divisor   = (getCrystalFrequency() / prescaler) / (baudRate * 16);
     }
 
+    // the prescaler is considered to be an enhanced function, so we need to set
+    // EFR[4] to '1' to be able to write to and use trigger level interrupts.
+    Adafruit_BusIO_Register     EFR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                    (SC16IS7XX_REG_EFR << 3 | _channel << 1));
+    Adafruit_BusIO_RegisterBits enable_bit_e(&EFR, 1, 4);
+    enable_bit_e.write(true);
+
     // set the initial clock divisor (prescaler) value from the MCR[7] bit
     Adafruit_BusIO_Register     MCR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                     (SC16IS7XX_REG_MCR << 3 | _channel << 1));
     Adafruit_BusIO_RegisterBits prescaler_bit(&MCR, 1, 7);
     prescaler_bit.write(prescaler == 4 ? 1 : 0);
 
-    // enable the divisor latch
+    // reset the enable bit for enhanced functions back to '0' to prevent
+    // unintended consequences of leaving it enabled
+    enable_bit_e.write(false);
+
+    // enable the divisor latch to allow us to write to the divisor registers
+    // The Special Register set (the two divisor registers) is accessible only
+    // when LCR[7] = logic 1 and LCR is not 0xBF (0b10111111 - No break, forced
+    // parity, 2 stop bits, 8 data bits)
     Adafruit_BusIO_Register     LCR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                     (SC16IS7XX_REG_LCR << 3 | _channel << 1));
     Adafruit_BusIO_RegisterBits latch_enable(&LCR, 1, 7);
@@ -147,11 +161,29 @@ void SC16IS752::setBaudrate(uint32_t baudRate) {
                                 (SC16IS7XX_REG_DLH << 3 | _channel << 1));
     DLH.write((uint8_t)(divisor >> 8));
 
-    // disable the divisor latch
+    // disable the divisor latch to lock the divisor and allow us access to the
+    // general registers again
     latch_enable.write(false);
 
     // re-enable sleep mode if it was previously enabled
     if (sleep_enabled) { enableSleepMode(true); }
+
+
+#ifdef SC16IS750_DEBUG_PRINT
+    float actual_baudrate = (getCrystalFrequency() / prescaler) /
+        (16 * divisor);
+    float error = (actual_baudrate - baudrate) * 100 / baudrate;
+    Serial.print("Desired baudrate: ");
+    Serial.println(baudrate, DEC);
+    Serial.print("Prescaler: ");
+    Serial.println(prescaler, DEC);
+    Serial.print("Calculated divisor: ");
+    Serial.println(divisor, DEC);
+    Serial.print("Actual baudrate: ");
+    Serial.println(actual_baudrate, DEC);
+    Serial.print("Baudrate error: ");
+    Serial.println(error, DEC);
+#endif  // SC16IS750_DEBUG_PRINT
 }
 
 /**
@@ -167,6 +199,11 @@ void SC16IS752::setLine(uint8_t dataBits, uint8_t parity, uint8_t stopBits) {
 
     uint8_t tmp_lcr = LCR.read();
     tmp_lcr &= 0xC0;  // Clear the lower six bit of LCR (LCR[0] to LCR[5]
+
+#ifdef SC16IS750_DEBUG_PRINT
+    Serial.print("LCR Register:0x");
+    Serial.println(tmp_lcr, DEC);
+#endif  // SC16IS750_DEBUG_PRINT
 
     // data bit length
     // LCR[0:1]
@@ -853,7 +890,14 @@ int SC16IS752::read(uint8_t* buf, size_t size) {
 int SC16IS752::available() {
     Adafruit_BusIO_Register RXLVL(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                   (SC16IS7XX_REG_RXLVL << 3 | _channel << 1));
+#ifdef SC16IS750_DEBUG_PRINT
+    int available_bytes = RXLVL.read();
+    Serial.print("=====Available data:");
+    Serial.println(available_bytes, DEC);
+    return available_bytes;
+#else
     return RXLVL.read();
+#endif  // SC16IS750_DEBUG_PRINT
 }
 
 /**
