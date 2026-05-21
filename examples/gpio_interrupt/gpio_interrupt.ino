@@ -58,7 +58,11 @@ void setup() {
     Serial.println("found!");
 
     // attach an interrupt to the pin on the expander
-    ExtSerial.attachInterrupt(GPIO_PIN, onInterrupt);
+    // NOTE: For everything except the ESP32, you could simply use
+    // `ExtSerial.attachInterrupt` here, but for the ESP32, we need to use the
+    // 'External' version of this function to avoid conflicts with the built-in
+    // interrupt functions.
+    ExtSerial.attachInterruptExternal(GPIO_PIN, onInterrupt);
 
 // set the pin mode for the pin on the Arduino connected to the IRQ pin and
 // attach the interrupt handler to it. The interrupt handler will be called when

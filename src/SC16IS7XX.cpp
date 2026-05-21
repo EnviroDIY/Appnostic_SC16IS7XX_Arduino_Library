@@ -473,7 +473,8 @@ void SC16IS7XX::clearCallback(uint16_t callbackMask) {
  * mode parameter will be ignored. The interrupt will be triggered on any change
  * of the pin state.
  */
-void SC16IS7XX::attachInterrupt(uint8_t pin, voidFxnPtr callback, uint8_t) {
+void SC16IS7XX::attachInterruptExternal(uint8_t pin, voidFxnPtr callback,
+                                        uint8_t) {
     if (pin > 7) {
         // Invalid pin number, do nothing or handle error as needed
         return;
@@ -494,7 +495,7 @@ void SC16IS7XX::attachInterrupt(uint8_t pin, voidFxnPtr callback, uint8_t) {
  * @brief Turns off the given interrupt.
  * @param pin the pin number on the port expander (0 - 7)
  */
-void SC16IS7XX::detachInterrupt(uint8_t pin) {
+void SC16IS7XX::detachInterruptExternal(uint8_t pin) {
     if (pin > 7) {
         // Invalid pin number, do nothing or handle error as needed
         return;
