@@ -432,7 +432,7 @@ class SC16IS7XX {
 
     bool        getInterruptStatus();
     uint16_t    getInterruptSource();
-    void        __isr(void);
+    void        interruptHandler(void);
     static void handleInterrupt(void);
 };
 

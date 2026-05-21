@@ -55,6 +55,6 @@ void setup() {
 }
 
 void loop() {
-    if (ExtSerial.getInterruptStatus()) { ExtSerial.__isr(); }
+    if (ExtSerial.getInterruptStatus()) { ExtSerial.interruptHandler(); }
     delay(100);
 }

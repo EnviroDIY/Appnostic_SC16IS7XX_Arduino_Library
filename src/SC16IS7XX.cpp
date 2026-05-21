@@ -592,7 +592,7 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
  *
  * On Espressif boards (ESP8266 and ESP32), the ISR must be stored in IRAM
  */
-void ISR_MEM_ACCESS SC16IS7XX::__isr(void) {
+void ISR_MEM_ACCESS SC16IS7XX::interruptHandler(void) {
     uint16_t callbackMask = getInterruptSource();
 
     // find the position of the interrupt in the our list of callbacks
@@ -611,7 +611,7 @@ void ISR_MEM_ACCESS SC16IS7XX::__isr(void) {
  * On Espressif boards (ESP8266 and ESP32), the ISR must be stored in IRAM
  */
 void ISR_MEM_ACCESS SC16IS7XX::handleInterrupt() {
-    if (_activeObject) _activeObject->__isr();
+    if (_activeObject) _activeObject->interruptHandler();
 }
 
 // cSpell:words SPIFREQ SPIREG MISO MOSI
