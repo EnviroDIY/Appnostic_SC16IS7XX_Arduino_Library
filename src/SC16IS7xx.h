@@ -1,11 +1,11 @@
 /**
- * @file SC16IS7XX.h
+ * @file SC16IS7xx.h
  * @copyright Stroud Water Research Center
  * Part of the EnviroDIY ModularSensors library for Arduino.
  * This library is published under the BSD-3 license.
  * @author Sara Geleskie Damiano <sdamiano@stroudcenter.org>
  *
- * @brief Contains the SC16IS7XX class and defines for many of the
+ * @brief Declaration of the SC16IS7xx class and defines for many of the
  * device's features.
  */
 
@@ -21,6 +21,7 @@
 #include <Adafruit_BusIO_Register.h>
 #include <Adafruit_I2CDevice.h>
 #include <Adafruit_SPIDevice.h>
+#include <new>
 
 /**
  * @def ISR_MEM_ACCESS
@@ -42,8 +43,17 @@
  * Features of the SC16IS7XX family of devices.
  */
 /**@{*/
-#define SC16IS7XX_UART_CHANNELS (2)  ///< Number of UART channels on the device
-#define SC16IS7XX_GPIO_PINS (8)      ///< Number of GPIO pins on the device
+#define SC16IS740_UART_CHANNELS (1)  ///< Number of UART channels on SC16IS740
+#define SC16IS750_UART_CHANNELS (1)  ///< Number of UART channels on SC16IS750
+#define SC16IS760_UART_CHANNELS (1)  ///< Number of UART channels on SC16IS760
+#define SC16IS752_UART_CHANNELS (2)  ///< Number of UART channels on SC16IS752
+#define SC16IS762_UART_CHANNELS (2)  ///< Number of UART channels on SC16IS762
+
+#define SC16IS740_GPIO_PINS (0)  ///< Number of GPIO pins on SC16IS740
+#define SC16IS750_GPIO_PINS (8)  ///< Number of GPIO pins on SC16IS750
+#define SC16IS760_GPIO_PINS (8)  ///< Number of GPIO pins on SC16IS760
+#define SC16IS752_GPIO_PINS (8)  ///< Number of GPIO pins on SC16IS752
+#define SC16IS762_GPIO_PINS (8)  ///< Number of GPIO pins on SC16IS762
 #define SC16IS7XX_NON_GPIO_INTERRUPTS \
     (11)  ///< The number of non-pin-related interrupt sources (DSR, DTR, CD,
           ///< RI,
@@ -129,7 +139,7 @@
  * @note Because the address is shifted left by 3 bits and the channel is
  * shifted left by 1 bit, the register address to use in the Wire functions is
  * effectively (reg_addr << 3 | channel << 1) when writing or reading registers
- * for a specific channel on the SC16IS752.
+ * for a specific channel on the SC16IS7xx.
  */
 /**@{*/
 // clang-format on
@@ -361,18 +371,31 @@
 /// @brief  Function pointer type for interrupt callbacks
 typedef void (*voidFxnPtr)(void);
 
+#define SC16IS7XX_CHANNEL_A 0x00  ///< Channel A of the SC16IS7xx
+#define SC16IS7XX_CHANNEL_B 0x01  ///< Channel B of the SC16IS7xx
+
+class SC16IS7xx;
+
+#include "SC16IS7xx_UART.h"
+
 /**
  * @brief Base driver for SC16IS7XX family devices using I2C or SPI.
  */
-class SC16IS7XX {
+class SC16IS7xx {
  private:
+    friend class SC16IS7xx_UART;
+
     uint32_t crystal_frequency = SC16IS7XX_DEFAULT_XTAL_FREQ;
     bool gpioPullDirection = HIGH;  ///< false for pull-down, true for pull-up
 
+    alignas(SC16IS7xx_UART) uint8_t
+        _uartStorage[SC16IS752_UART_CHANNELS][sizeof(SC16IS7xx_UART)];
+    SC16IS7xx_UART* uartChannels[SC16IS752_UART_CHANNELS] = {nullptr, nullptr};
+
     bool _init(void);
 
-    voidFxnPtr ISRcallback[SC16IS7XX_GPIO_PINS + SC16IS7XX_NON_GPIO_INTERRUPTS];
-    uint16_t   ISRlist[SC16IS7XX_GPIO_PINS + SC16IS7XX_NON_GPIO_INTERRUPTS];
+    voidFxnPtr ISRcallback[SC16IS752_GPIO_PINS + SC16IS7XX_NON_GPIO_INTERRUPTS];
+    uint16_t   ISRlist[SC16IS752_GPIO_PINS + SC16IS7XX_NON_GPIO_INTERRUPTS];
     uint8_t    nints;  // Stores total number of attached interrupts
 
  protected:
@@ -387,7 +410,7 @@ class SC16IS7XX {
     void callCallback(uint16_t callbackMask);
     /// static pointer to active SC16IS7XX instance, needed for easy ISR
     /// handling
-    static SC16IS7XX* _activeObject;
+    static SC16IS7xx* _activeObject;
 
     /// flag to indicate whether the GPIO interrupts are configured for latching
     /// or not. If not, the state of the pin at the time of the interrupt will
@@ -400,17 +423,58 @@ class SC16IS7XX {
     bool gpioInterruptsLatched = false;
 
  public:
-    class SC16IS752;
+    /**
+     * @brief Construct a new SC16IS7xx object.
+     */
+    SC16IS7xx() = default;
 
     /**
-     * @brief Construct a new SC16IS7XX object.
+     * @brief Destroy the SC16IS7xx object.
      */
-    SC16IS7XX() = default;
+    ~SC16IS7xx();
 
     /**
-     * @brief Destroy the SC16IS7XX object.
+     * @brief Get a UART channel interface by channel index.
+     * @param channel Channel number (SC16IS7XX_CHANNEL_A or
+     * SC16IS7XX_CHANNEL_B).
+     * @param createIfMissing If true, constructs the channel object on first
+     * use in internal fixed storage.
+     * @return Pointer to the channel object, or nullptr for invalid channel or
+     * when createIfMissing is false and the channel has not been created yet.
      */
-    ~SC16IS7XX() = default;
+    SC16IS7xx_UART* getUART(uint8_t channel, bool createIfMissing = true);
+
+    /**
+     * @brief Get channel A UART interface.
+     * @param createIfMissing If true, creates channel A on first use.
+     * @return Pointer to channel A interface or nullptr if not created and
+     * createIfMissing is false.
+     */
+    SC16IS7xx_UART* uartA(bool createIfMissing = true) {
+        return getUART(SC16IS7XX_CHANNEL_A, createIfMissing);
+    }
+
+    /**
+     * @brief Get channel B UART interface.
+     * @param createIfMissing If true, creates channel B on first use.
+     * @return Pointer to channel B interface or nullptr if not created and
+     * createIfMissing is false.
+     */
+    SC16IS7xx_UART* uartB(bool createIfMissing = true) {
+        return getUART(SC16IS7XX_CHANNEL_B, createIfMissing);
+    }
+
+    /**
+     * @brief Destroy one lazily created UART channel object.
+     * @param channel Channel number (SC16IS7XX_CHANNEL_A or
+     * SC16IS7XX_CHANNEL_B).
+     */
+    void releaseUART(uint8_t channel);
+
+    /**
+     * @brief Destroy all lazily created UART channel objects.
+     */
+    void releaseUARTs();
 
     // i2c
     bool begin_i2c(uint8_t  addr    = SC16IS7XX_DEFAULT_ADDRESS,
@@ -443,23 +507,23 @@ class SC16IS7XX {
 #if !(defined(ESP32) && defined(ESP_ARDUINO_VERSION_MAJOR) && \
       ESP_ARDUINO_VERSION_MAJOR <= 2)
     // for cores without conflict, these are simpler
-    /// @copydoc SC16IS7XX::pinModeExternal
+    /// @copydoc SC16IS7xx::pinModeExternal
     void pinMode(uint8_t pin, uint8_t mode) {
         pinModeExternal(pin, mode);
     };
-    /// @copydoc SC16IS7XX::digitalWriteExternal
+    /// @copydoc SC16IS7xx::digitalWriteExternal
     void digitalWrite(uint8_t pin, uint8_t state) {
         digitalWriteExternal(pin, state);
     };
-    /// @copydoc SC16IS7XX::digitalReadExternal
+    /// @copydoc SC16IS7xx::digitalReadExternal
     uint8_t digitalRead(uint8_t pin) {
         return digitalReadExternal(pin);
     };
-    /// @copydoc SC16IS7XX::attachPinInterrupt
+    /// @copydoc SC16IS7xx::attachPinInterrupt
     void attachInterrupt(uint8_t pin, voidFxnPtr callback, uint8_t = 0) {
         attachPinInterrupt(pin, callback);
     };
-    /// @copydoc SC16IS7XX::detachPinInterrupt
+    /// @copydoc SC16IS7xx::detachPinInterrupt
     void detachInterrupt(uint8_t pin) {
         detachPinInterrupt(pin);
     };
@@ -479,9 +543,9 @@ class SC16IS7XX {
     void setGPIOLatch(bool enabled);
 
     uint16_t getInterruptSource();
-#if defined(SC16IS752_DEBUG_SERIAL)
+#if defined(SC16IS7XX_DEBUG_SERIAL)
     void printInterruptSource(uint16_t callbackMask);
-#endif  // SC16IS752_DEBUG_SERIAL
+#endif  // SC16IS7XX_DEBUG_SERIAL
     void        handleInterrupt(uint16_t callbackMask);
     static void interruptHandler(void);
 };

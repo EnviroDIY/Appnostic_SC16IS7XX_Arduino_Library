@@ -1,29 +1,32 @@
 /**
- * @file SC16IS752.h
+ * @file SC16IS7xx_UART.h
  * @copyright Stroud Water Research Center
  * Part of the EnviroDIY ModularSensors library for Arduino.
  * This library is published under the BSD-3 license.
  * @author Sara Geleskie Damiano <sdamiano@stroudcenter.org>
  *
- * @brief Contains the SC16IS752 class.
+ * @brief Declaration of the SC16IS7xx_UART class.
  */
 
-#ifndef _SC16IS752_H_
-#define _SC16IS752_H_
-#include "SC16IS7XX.h"
+#ifndef _SC16IS7XX_UART_H_
+#define _SC16IS7XX_UART_H_
 
-#define SC16IS752_CHANNEL_A 0x00  ///< Channel A of the SC16IS752
-#define SC16IS752_CHANNEL_B 0x01  ///< Channel B of the SC16IS752
+#if ARDUINO >= 100
+#include "Arduino.h"
+#else  // if ARDUINO >= 100
+#include "WProgram.h"
+#endif  // if ARDUINO >= 100
 
 /**
- * @brief UART line format presets for @ref SC16IS752::setLine and
- * @ref SC16IS752::begin.
+ * @brief UART line format presets for @ref SC16IS7xx_UART::setLine and
+ * @ref SC16IS7xx_UART::begin.
  *
  * These values use the Arduino-style packed serial config encoding that is
- * decoded by @ref SC16IS752::setLine(uint8_t), then translated into LCR bits.
+ * decoded by @ref SC16IS7xx_UART::setLine(uint8_t), then translated into LCR
+ * bits.
  *
- * Bit interpretation of each enum value in @ref SC16IS752::setLine(uint8_t)
- * (only bits 5:0 are used):
+ * Bit interpretation of each enum value in @ref
+ * SC16IS7xx_UART::setLine(uint8_t) (only bits 5:0 are used):
  *
  * | Bits   | Meaning                                           |
  * |:-------|:--------------------------------------------------|
@@ -38,7 +41,7 @@
  * values themselves are only guaranteed to match the AVR HardwareSerial config
  * values.
  */
-enum class SC16IS7XXSerialConfig : uint8_t {
+enum class SC16IS7xxSerialConfig : uint8_t {
     C5N1 = 0x00,  ///< 5 data bits,   no parity, 1 stop bit  (00 0 000)
     C6N1 = 0x02,  ///< 6 data bits,   no parity, 1 stop bit  (00 0 010)
     C7N1 = 0x04,  ///< 7 data bits,   no parity, 1 stop bit  (00 0 100)
@@ -65,13 +68,17 @@ enum class SC16IS7XXSerialConfig : uint8_t {
     C8O2 = 0x3E,  ///< 8 data bits,  odd parity, 2 stop bits (11 1 110)
 };
 
+// Forward declaration of the main class
+class SC16IS7xx;
+
 /**
- * @brief SC16IS752 dual-channel UART driver.
+ * @brief Per-UART-channel serial API bound to one SC16IS7xx device.
  */
-class SC16IS7XX::SC16IS752 : public SC16IS7XX, public Stream {
+class SC16IS7xx_UART : public Stream {
  private:
-    uint8_t _channel;
-    bool    _peek_flag = 0;  ///< Flag to indicate if there's a peeked byte
+    SC16IS7xx* _owner;
+    uint8_t    _channel;
+    bool       _peek_flag = 0;  ///< Flag to indicate if there's a peeked byte
     int _peek_buf = -1;  ///< peeked byte value, valid only if _peek_flag is set
 
     uint8_t FIFOAvailableData();
@@ -81,7 +88,11 @@ class SC16IS7XX::SC16IS752 : public SC16IS7XX, public Stream {
     void    EnableTransmit(uint8_t tx_enable);
 
  public:
-    SC16IS752(uint8_t channel);
+    SC16IS7xx_UART(SC16IS7xx* owner, uint8_t channel);
+
+    void setOwner(SC16IS7xx* owner) {
+        _owner = owner;
+    }
 
     // uart configuration
     void enableFIFO(bool enabled);
@@ -89,7 +100,7 @@ class SC16IS7XX::SC16IS752 : public SC16IS7XX, public Stream {
     void setFIFOTriggerLevel(bool rx, uint8_t length);
     void setBaudrate(uint32_t baudRate);
     void setLine(uint8_t dataBits, uint8_t parity, uint8_t stopBits);
-    void setLine(SC16IS7XXSerialConfig config);
+    void setLine(SC16IS7xxSerialConfig config);
     void setLine(uint8_t config);
     void enableFlowControl(bool enabled);
 
@@ -140,7 +151,7 @@ class SC16IS7XX::SC16IS752 : public SC16IS7XX, public Stream {
 
     // uart begin; aligned with HardwareSerial
     void begin(unsigned long baud);
-    void begin(unsigned long baud, SC16IS7XXSerialConfig config);
+    void begin(unsigned long baud, SC16IS7xxSerialConfig config);
     void begin(unsigned long baud, uint8_t config);
     void begin(unsigned long baud, uint8_t dataBits, uint8_t parity,
                uint8_t stopBits);
@@ -158,6 +169,4 @@ class SC16IS7XX::SC16IS752 : public SC16IS7XX, public Stream {
     void   flush();
 };
 
-using SC16IS752 = SC16IS7XX::SC16IS752;
-
-#endif  // _SC16IS752_H_
+#endif  // _SC16IS7XX_UART_H_

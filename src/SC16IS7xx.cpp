@@ -1,17 +1,31 @@
 /**
- * @file SC16IS7XX.cpp
+ * @file SC16IS7xx.cpp
  * @copyright Stroud Water Research Center
  * Part of the EnviroDIY ModularSensors library for Arduino.
  * This library is published under the BSD-3 license.
  * @author Sara Geleskie Damiano <sdamiano@stroudcenter.org>
  *
- * @brief Implements the SC16IS7XX class.
+ * @brief Implements the SC16IS7xx class.
  */
 
-#include "SC16IS7XX.h"
+#include "SC16IS7xx.h"
+#include <new>
 
-// Pointer to active SC16IS7XX object
-SC16IS7XX* SC16IS7XX::_activeObject = nullptr;
+// Pointer to active SC16IS7xx object
+SC16IS7xx* SC16IS7xx::_activeObject = nullptr;
+
+SC16IS7xx::~SC16IS7xx() {
+    releaseUARTs();
+    if (i2c_dev) {
+        delete i2c_dev;
+        i2c_dev = nullptr;
+    }
+    if (spi_dev) {
+        delete spi_dev;
+        spi_dev = nullptr;
+    }
+    if (_activeObject == this) { _activeObject = nullptr; }
+}
 
 /*** CONFIG *******************************************************/
 
@@ -23,7 +37,7 @@ SC16IS7XX* SC16IS7XX::_activeObject = nullptr;
  * rates and should be set correctly for accurate baud rates.
  * @param frequency the frequency of the crystal in hertz
  */
-void SC16IS7XX::setCrystalFrequency(uint32_t frequency) {
+void SC16IS7xx::setCrystalFrequency(uint32_t frequency) {
     crystal_frequency = frequency;
 }
 
@@ -31,7 +45,7 @@ void SC16IS7XX::setCrystalFrequency(uint32_t frequency) {
  * @brief gets the xtal frequency in hertz.
  * @return the frequency of the crystal in hertz
  */
-uint32_t SC16IS7XX::getCrystalFrequency() {
+uint32_t SC16IS7xx::getCrystalFrequency() {
     return crystal_frequency;
 }
 
@@ -48,7 +62,7 @@ uint32_t SC16IS7XX::getCrystalFrequency() {
  * @warning Only change this if your board has external pull-down resistors on
  * the GPIO pins!
  */
-void SC16IS7XX::setGPIOPullDirection(bool pullUp) {
+void SC16IS7xx::setGPIOPullDirection(bool pullUp) {
     gpioPullDirection = pullUp;
 }
 
@@ -56,7 +70,7 @@ void SC16IS7XX::setGPIOPullDirection(bool pullUp) {
  * @brief gets the GPIO pull direction.
  * @return true if pull-up, false if pull-down
  */
-bool SC16IS7XX::getGPIOPullDirection() {
+bool SC16IS7xx::getGPIOPullDirection() {
     return gpioPullDirection;
 }
 
@@ -65,7 +79,7 @@ bool SC16IS7XX::getGPIOPullDirection() {
 /**
  * @brief derived function to reset the device
  */
-void SC16IS7XX::resetDevice() {
+void SC16IS7xx::resetDevice() {
     Adafruit_BusIO_Register     IOControl(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                           SC16IS7XX_REG_IOCONTROL << 3);
     Adafruit_BusIO_RegisterBits reset_bit(&IOControl, 1, 3);
@@ -77,7 +91,7 @@ void SC16IS7XX::resetDevice() {
  * the scratchpad register on both channels
  * @return true if the device is online, false otherwise
  */
-bool SC16IS7XX::ping() {
+bool SC16IS7xx::ping() {
     for (uint8_t channel = 0; channel < 2; channel++) {
         Adafruit_BusIO_Register SPR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                     (SC16IS7XX_REG_SPR << 3 | channel << 1));
@@ -91,7 +105,7 @@ bool SC16IS7XX::ping() {
 }
 
 
-bool SC16IS7XX::_init() {
+bool SC16IS7xx::_init() {
     // empty interrupt registers and callbacks
     memset(ISRlist, 0, sizeof(ISRlist));
     memset(ISRcallback, 0, sizeof(ISRcallback));
@@ -115,7 +129,7 @@ bool SC16IS7XX::_init() {
    is "Wire"
  * @return true if the device was successfully initialized, false otherwise
  */
-bool SC16IS7XX::begin_i2c(uint8_t addr, TwoWire* theWire) {
+bool SC16IS7xx::begin_i2c(uint8_t addr, TwoWire* theWire) {
     uint8_t seven_bit_addr;
     // if we have one of the possible 7-bit addresses, use it directly
     if ((addr >= 0x48) && (addr <= 0x57)) {
@@ -154,7 +168,7 @@ bool SC16IS7XX::begin_i2c(uint8_t addr, TwoWire* theWire) {
  *    @param  frequency The SPI bus frequency
  *    @return True if initialization was successful, otherwise false.
  */
-bool SC16IS7XX::begin_SPI(uint8_t cs_pin, SPIClass* theSPI,
+bool SC16IS7xx::begin_SPI(uint8_t cs_pin, SPIClass* theSPI,
                           uint32_t frequency) {
     // set this as the active object for interrupt handling before we initialize
     // the SPI
@@ -184,7 +198,7 @@ bool SC16IS7XX::begin_SPI(uint8_t cs_pin, SPIClass* theSPI,
  *    @param  frequency The SPI bus frequency
  *    @return True if initialization was successful, otherwise false.
  */
-bool SC16IS7XX::begin_SPI(int8_t cs_pin, int8_t sck_pin, int8_t miso_pin,
+bool SC16IS7xx::begin_SPI(int8_t cs_pin, int8_t sck_pin, int8_t miso_pin,
                           int8_t mosi_pin, uint32_t frequency) {
     // set this as the active object for interrupt handling before we initialize
     // the SPI
@@ -208,8 +222,35 @@ bool SC16IS7XX::begin_SPI(int8_t cs_pin, int8_t sck_pin, int8_t miso_pin,
  * @brief Ends the current SC16IS7XX session by setting the active object
  * pointer to null.
  */
-void SC16IS7XX::end() {
+void SC16IS7xx::end() {
     if (this == _activeObject) { _activeObject = nullptr; }
+}
+
+SC16IS7xx_UART* SC16IS7xx::getUART(uint8_t channel, bool createIfMissing) {
+    if (channel >= SC16IS752_UART_CHANNELS) { return nullptr; }
+
+    SC16IS7xx_UART*& uart = uartChannels[channel];
+    if (!uart && createIfMissing) {
+        uart = new (static_cast<void*>(&_uartStorage[channel][0]))
+            SC16IS7xx_UART(this, channel);
+    }
+    return uart;
+}
+
+void SC16IS7xx::releaseUART(uint8_t channel) {
+    if (channel >= SC16IS752_UART_CHANNELS) { return; }
+
+    SC16IS7xx_UART*& uart = uartChannels[channel];
+    if (uart) {
+        uart->~SC16IS7xx_UART();
+        uart = nullptr;
+    }
+}
+
+void SC16IS7xx::releaseUARTs() {
+    for (uint8_t channel = 0; channel < SC16IS752_UART_CHANNELS; channel++) {
+        releaseUART(channel);
+    }
 }
 
 
@@ -221,7 +262,7 @@ void SC16IS7XX::end() {
  * @param mode The pin mode, either INPUT or OUTPUT
  *
  * @note For all cores *except* the ESP32, you can simply use
- * SC16IS7XX::pinMode, SC16IS7XX::digitalWrite, and SC16IS7XX::digitalRead
+ * SC16IS7xx::pinMode, SC16IS7xx::digitalWrite, and SC16IS7xx::digitalRead
  * without the 'External' suffix. However, for the ESP32, use the 'External'
  * versions to avoid conflicts with built-in pin functions.
  *
@@ -232,7 +273,7 @@ void SC16IS7XX::end() {
  * all active low implying they are being pulled up internally.  There is no way
  * to change the pull resistor configuration.
  */
-void SC16IS7XX::pinModeExternal(uint8_t pin, uint8_t mode) {
+void SC16IS7xx::pinModeExternal(uint8_t pin, uint8_t mode) {
     Adafruit_BusIO_Register     IODir(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                       SC16IS7XX_REG_IODIR << 3);
     Adafruit_BusIO_RegisterBits dir_bit(&IODir, 1, pin % 8);
@@ -245,11 +286,11 @@ void SC16IS7XX::pinModeExternal(uint8_t pin, uint8_t mode) {
  * @param state the pin state, either LOW (0) or HIGH (1)
  *
  * @note For all cores *except* the ESP32, you can simply use
- * SC16IS7XX::pinMode, SC16IS7XX::digitalWrite, and SC16IS7XX::digitalRead
+ * SC16IS7xx::pinMode, SC16IS7xx::digitalWrite, and SC16IS7xx::digitalRead
  * without the 'External' suffix. However, for the ESP32, use the 'External'
  * versions to avoid conflicts with built-in pin functions.
  */
-void SC16IS7XX::digitalWriteExternal(uint8_t pin, uint8_t state) {
+void SC16IS7xx::digitalWriteExternal(uint8_t pin, uint8_t state) {
     Adafruit_BusIO_Register     IOState(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                         SC16IS7XX_REG_IOSTATE << 3);
     Adafruit_BusIO_RegisterBits state_bit(&IOState, 1, pin % 8);
@@ -262,14 +303,14 @@ void SC16IS7XX::digitalWriteExternal(uint8_t pin, uint8_t state) {
  * @return the pin state, either LOW (0) or HIGH (1)
  *
  * @note For all cores *except* the ESP32, you can simply use
- * SC16IS7XX::pinMode, SC16IS7XX::digitalWrite, and SC16IS7XX::digitalRead
+ * SC16IS7xx::pinMode, SC16IS7xx::digitalWrite, and SC16IS7xx::digitalRead
  * without the 'External' suffix. However, for the ESP32, use the 'External'
  * versions to avoid conflicts with built-in pin functions.
  *
  * @warning If GPIO interrups are configured for latching, the state returned by
  * this function will not be valid.
  */
-uint8_t SC16IS7XX::digitalReadExternal(uint8_t pin) {
+uint8_t SC16IS7xx::digitalReadExternal(uint8_t pin) {
     Adafruit_BusIO_Register     IOState(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                         SC16IS7XX_REG_IOSTATE << 3);
     Adafruit_BusIO_RegisterBits state_bit(&IOState, 1, pin % 8);
@@ -279,7 +320,7 @@ uint8_t SC16IS7XX::digitalReadExternal(uint8_t pin) {
 /**
  * @brief sets the interrupt enable register to enable sleep mode
  *
- * Sleep mode is an enhanced feature of the SC16IS752/SC16IS762 UART. It is
+ * Sleep mode is an enhanced feature of the SC16IS7xx/SC16IS762 UART. It is
  * enabled when EFR[4], the enhanced functions bit, is set and when IER[4] is
  * set. Sleep mode is entered when:
  *   - The serial data input line, RX, is idle
@@ -299,7 +340,7 @@ uint8_t SC16IS7XX::digitalReadExternal(uint8_t pin) {
  *
  * @param enabled true enables sleep mode, false disables it
  */
-void SC16IS7XX::enableSleepMode(bool enabled) {
+void SC16IS7xx::enableSleepMode(bool enabled) {
     Adafruit_BusIO_Register     IER(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                     SC16IS7XX_REG_IER << 3);
     Adafruit_BusIO_RegisterBits sleep(&IER, 1, SC16IS7XX_IER_SLEEP);
@@ -316,7 +357,7 @@ void SC16IS7XX::enableSleepMode(bool enabled) {
  *
  * @return True if sleep mode is enabled, false otherwise
  */
-bool SC16IS7XX::isSleepEnabled() {
+bool SC16IS7xx::isSleepEnabled() {
     Adafruit_BusIO_Register     IER(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                     SC16IS7XX_REG_IER << 3);
     Adafruit_BusIO_RegisterBits sleep(&IER, 1, SC16IS7XX_IER_SLEEP);
@@ -345,7 +386,7 @@ bool SC16IS7XX::isSleepEnabled() {
  * of the IOControl register, while pins 4-7 are controlled by bit 1. Therefore,
  * to enable an interrupt.
  */
-void SC16IS7XX::setPinInterrupt(uint8_t pin, bool enabled) {
+void SC16IS7xx::setPinInterrupt(uint8_t pin, bool enabled) {
     if (pin > 7) {
         // Invalid pin number, do nothing or handle error as needed
         return;
@@ -370,7 +411,7 @@ void SC16IS7XX::setPinInterrupt(uint8_t pin, bool enabled) {
  * @param pin the pin number on the port expander (0 - 7)
  * @return the interrupt enable status, either LOW (0) or HIGH (1)
  */
-uint8_t SC16IS7XX::getPinInterrupt(uint8_t pin) {
+uint8_t SC16IS7xx::getPinInterrupt(uint8_t pin) {
     Adafruit_BusIO_Register     IOIntEna(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                          SC16IS7XX_REG_IOINTENA << 3);
     Adafruit_BusIO_RegisterBits enable_bit(&IOIntEna, 1, pin % 8);
@@ -381,7 +422,7 @@ uint8_t SC16IS7XX::getPinInterrupt(uint8_t pin) {
  * @brief Write all GPIO output states at once.
  * @param state Bitmask written to the IOSTATE register.
  */
-void SC16IS7XX::setPortState(uint8_t state) {
+void SC16IS7xx::setPortState(uint8_t state) {
     Adafruit_BusIO_Register IOState(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                     SC16IS7XX_REG_IOSTATE << 3);
     IOState.write(state);
@@ -394,7 +435,7 @@ void SC16IS7XX::setPortState(uint8_t state) {
  * @warning If GPIO interrups are configured for latching, the states returned
  * by this function will not be valid.
  */
-uint8_t SC16IS7XX::getPortState() {
+uint8_t SC16IS7xx::getPortState() {
     Adafruit_BusIO_Register IOState(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                     SC16IS7XX_REG_IOSTATE << 3);
     return IOState.read();
@@ -404,7 +445,7 @@ uint8_t SC16IS7XX::getPortState() {
  * @brief Set all GPIO direction bits at once.
  * @param mode Bitmask written to the IODIR register.
  */
-void SC16IS7XX::setPortMode(uint8_t mode) {
+void SC16IS7xx::setPortMode(uint8_t mode) {
     Adafruit_BusIO_Register IODir(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                   SC16IS7XX_REG_IODIR << 3);
     IODir.write(mode);
@@ -414,7 +455,7 @@ void SC16IS7XX::setPortMode(uint8_t mode) {
  * @brief Read all GPIO direction bits from the IODIR register.
  * @return uint8_t Current GPIO direction bitmask.
  */
-uint8_t SC16IS7XX::getPortMode() {
+uint8_t SC16IS7xx::getPortMode() {
     Adafruit_BusIO_Register IODir(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                   SC16IS7XX_REG_IODIR << 3);
     return IODir.read();
@@ -437,7 +478,7 @@ uint8_t SC16IS7XX::getPortMode() {
  * interrupt is not cleared and the corresponding bit of the IOState register
  * keeps the logic value that initiates the interrupt.
  */
-void SC16IS7XX::setGPIOLatch(bool enabled) {
+void SC16IS7xx::setGPIOLatch(bool enabled) {
     Adafruit_BusIO_Register     IOControl(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                           SC16IS7XX_REG_IOCONTROL << 3);
     Adafruit_BusIO_RegisterBits latch_bit(&IOControl, 1, 0);
@@ -454,7 +495,7 @@ void SC16IS7XX::setGPIOLatch(bool enabled) {
  * callback to.
  * @param callback the function to call when the interrupt occurs
  */
-void SC16IS7XX::storeCallback(uint16_t callbackMask, voidFxnPtr callback) {
+void SC16IS7xx::storeCallback(uint16_t callbackMask, voidFxnPtr callback) {
     // Store the interrupt callback.
     // Only store when there is really an ISR to call.
     // This allow for calling attachInterrupt(pin, NULL, mode), we set up all
@@ -484,7 +525,7 @@ void SC16IS7XX::storeCallback(uint16_t callbackMask, voidFxnPtr callback) {
  * @param callbackMask a bitmask representing the interrupt to detach the
  * callback from.
  */
-void SC16IS7XX::clearCallback(uint16_t callbackMask) {
+void SC16IS7xx::clearCallback(uint16_t callbackMask) {
     // Remove callback from the ISR list
     uint8_t current;
     for (current = 0; current < nints; current++) {
@@ -505,7 +546,7 @@ void SC16IS7XX::clearCallback(uint16_t callbackMask) {
  * @param callbackMask a bitmask representing the interrupt to call the
  * callback for.
  */
-void SC16IS7XX::callCallback(uint16_t callbackMask) {
+void SC16IS7xx::callCallback(uint16_t callbackMask) {
     // Find the position of the interrupt in the ISR list
     uint8_t current;
     for (current = 0; current < nints; current++) {
@@ -513,9 +554,9 @@ void SC16IS7XX::callCallback(uint16_t callbackMask) {
     }
     // if we didn't have that callback
     if (current == nints) {
-#if defined(SC16IS752_DEBUG_SERIAL)
-        SC16IS752_DEBUG_SERIAL.println("======Matching callback not found!");
-#endif  // SC16IS752_DEBUG_SERIAL
+#if defined(SC16IS7XX_DEBUG_SERIAL)
+        SC16IS7XX_DEBUG_SERIAL.println("======Matching callback not found!");
+#endif  // SC16IS7XX_DEBUG_SERIAL
         return;
     }
 
@@ -545,7 +586,7 @@ void SC16IS7XX::callCallback(uint16_t callbackMask) {
  * means that you cannot read the current value of any pin using
  * digitalReadExternal or getPortState.
  */
-void SC16IS7XX::attachPinInterrupt(uint8_t pin, voidFxnPtr callback, uint8_t) {
+void SC16IS7xx::attachPinInterrupt(uint8_t pin, voidFxnPtr callback, uint8_t) {
     if (pin > 7) {
         // Invalid pin number, do nothing or handle error as needed
         return;
@@ -576,7 +617,7 @@ void SC16IS7XX::attachPinInterrupt(uint8_t pin, voidFxnPtr callback, uint8_t) {
  * @brief Turns off the given interrupt.
  * @param pin the pin number on the port expander (0 - 7)
  */
-void SC16IS7XX::detachPinInterrupt(uint8_t pin) {
+void SC16IS7xx::detachPinInterrupt(uint8_t pin) {
     if (pin > 7) {
         // Invalid pin number, do nothing or handle error as needed
         return;
@@ -594,37 +635,37 @@ void SC16IS7XX::detachPinInterrupt(uint8_t pin) {
 }
 
 
-#if defined(SC16IS752_DEBUG_SERIAL)
+#if defined(SC16IS7XX_DEBUG_SERIAL)
 /**
  * @brief Print out the source of the interrupt
  * @param callbackMask A bitmask representing the source of the interrupt, used
  * to find the appropriate callback in the list of callbacks.
  */
-void SC16IS7XX::printInterruptSource(uint16_t callbackMask) {
+void SC16IS7xx::printInterruptSource(uint16_t callbackMask) {
     uint16_t callbackIIR = callbackMask >> 8;  // upper byte is the IIR source
 
     switch (callbackIIR) {
         case SC16IS7XX_NO_INTERRUPT >> 8: {
-            SC16IS752_DEBUG_SERIAL.println("No interrupt pending");
+            SC16IS7XX_DEBUG_SERIAL.println("No interrupt pending");
             break;
         }
 
         case SC16IS7XX_IIR_MODEM: {
             switch (callbackMask) {
                 case SC16IS7XX_INT_MASK_RI: {
-                    SC16IS752_DEBUG_SERIAL.println("Ring Indicator Interrupt");
+                    SC16IS7XX_DEBUG_SERIAL.println("Ring Indicator Interrupt");
                     break;
                 }
                 case SC16IS7XX_INT_MASK_CD: {
-                    SC16IS752_DEBUG_SERIAL.println("Carrier Detect Interrupt");
+                    SC16IS7XX_DEBUG_SERIAL.println("Carrier Detect Interrupt");
                     break;
                 }
                 case SC16IS7XX_INT_MASK_DSR: {
-                    SC16IS752_DEBUG_SERIAL.println("Data Set Ready Interrupt");
+                    SC16IS7XX_DEBUG_SERIAL.println("Data Set Ready Interrupt");
                     break;
                 }
                 case SC16IS7XX_INT_MASK_DTR: {
-                    SC16IS752_DEBUG_SERIAL.println(
+                    SC16IS7XX_DEBUG_SERIAL.println(
                         "Data Terminal Ready Interrupt");
                     break;
                 }
@@ -634,42 +675,42 @@ void SC16IS7XX::printInterruptSource(uint16_t callbackMask) {
         case SC16IS7XX_IIR_CTSRTS: {
             switch (callbackMask)
             case SC16IS7XX_INT_MASK_CTS: {
-                SC16IS752_DEBUG_SERIAL.println("Clear to Send Interrupt");
+                SC16IS7XX_DEBUG_SERIAL.println("Clear to Send Interrupt");
                 break;
             }
             case SC16IS7XX_INT_MASK_RTS: {
-                SC16IS752_DEBUG_SERIAL.println("Ready to Send Interrupt");
+                SC16IS7XX_DEBUG_SERIAL.println("Ready to Send Interrupt");
                 break;
             }
         }
 
         case SC16IS7XX_IIR_XOFF: {
-            SC16IS752_DEBUG_SERIAL.println("XOFF Interrupt");
+            SC16IS7XX_DEBUG_SERIAL.println("XOFF Interrupt");
             break;
         }
         case SC16IS7XX_IIR_LINE: {
-            SC16IS752_DEBUG_SERIAL.println("Line status error");
+            SC16IS7XX_DEBUG_SERIAL.println("Line status error");
             break;
         }
         case SC16IS7XX_IIR_THR: {
-            SC16IS752_DEBUG_SERIAL.println("THR interrupt");
+            SC16IS7XX_DEBUG_SERIAL.println("THR interrupt");
             break;
         }
         case SC16IS7XX_IIR_RHR: {
-            SC16IS752_DEBUG_SERIAL.println("RHR interrupt");
+            SC16IS7XX_DEBUG_SERIAL.println("RHR interrupt");
             break;
         }
         case SC16IS7XX_IIR_TIMEOUT: {
-            SC16IS752_DEBUG_SERIAL.println("Receiver time-out");
+            SC16IS7XX_DEBUG_SERIAL.println("Receiver time-out");
             break;
         }
 
         case SC16IS7XX_IIR_GPIO: {
             if (!gpioInterruptsLatched) {
-                SC16IS752_DEBUG_SERIAL.println(
+                SC16IS7XX_DEBUG_SERIAL.println(
                     "GPIO pin change interrupt; unable to determine which pin "
                     "triggered the interrupt.");
-                SC16IS752_DEBUG_SERIAL.println(
+                SC16IS7XX_DEBUG_SERIAL.println(
                     "Use GPIO interrupt latching to determine which pin "
                     "triggered the interrupt.");
                 break;
@@ -677,25 +718,25 @@ void SC16IS7XX::printInterruptSource(uint16_t callbackMask) {
 
             for (uint8_t pin = 0; pin < 8; pin++) {
                 if (((callbackMask & 0x00FFu) & (1u << pin)) == (1u << pin)) {
-                    SC16IS752_DEBUG_SERIAL.print("GPIO pin change interrupt");
-                    SC16IS752_DEBUG_SERIAL.print(", pin ");
-                    SC16IS752_DEBUG_SERIAL.println(pin);
+                    SC16IS7XX_DEBUG_SERIAL.print("GPIO pin change interrupt");
+                    SC16IS7XX_DEBUG_SERIAL.print(", pin ");
+                    SC16IS7XX_DEBUG_SERIAL.println(pin);
                 }
             }
             break;
         }
 
         default: {
-            SC16IS752_DEBUG_SERIAL.print("Unknown interrupt source");
-            SC16IS752_DEBUG_SERIAL.print(", callback mask hex: 0x");
-            SC16IS752_DEBUG_SERIAL.print(callbackMask, HEX);
-            SC16IS752_DEBUG_SERIAL.print(", bin: 0b");
-            SC16IS752_DEBUG_SERIAL.println(callbackMask, BIN);
+            SC16IS7XX_DEBUG_SERIAL.print("Unknown interrupt source");
+            SC16IS7XX_DEBUG_SERIAL.print(", callback mask hex: 0x");
+            SC16IS7XX_DEBUG_SERIAL.print(callbackMask, HEX);
+            SC16IS7XX_DEBUG_SERIAL.print(", bin: 0b");
+            SC16IS7XX_DEBUG_SERIAL.println(callbackMask, BIN);
             break;
         }
     }
 }
-#endif  // SC16IS752_DEBUG_SERIAL
+#endif  // SC16IS7XX_DEBUG_SERIAL
 
 
 /**
@@ -711,7 +752,7 @@ void SC16IS7XX::printInterruptSource(uint16_t callbackMask) {
  * the result of this function in more than one place, you must store it in a
  * variable instead of calling this function multiple times.
  */
-uint16_t SC16IS7XX::getInterruptSource(void) {
+uint16_t SC16IS7xx::getInterruptSource(void) {
     // Calling the routine directly from -here- takes about 1us
     // Depending on where you are in the list it will take longer
     Adafruit_BusIO_Register IIR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
@@ -721,20 +762,20 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
     // store additional information about the interrupt source in the lower byte
     uint16_t irq_reg = IIR.read();
 
-#if defined(SC16IS752_DEBUG_SERIAL)
-    SC16IS752_DEBUG_SERIAL.print("==Interrupt Identification Register");
-    SC16IS752_DEBUG_SERIAL.print(" hex: 0x");
-    SC16IS752_DEBUG_SERIAL.print(irq_reg, HEX);
-    SC16IS752_DEBUG_SERIAL.print(", bin: 0b");
-    SC16IS752_DEBUG_SERIAL.println(irq_reg, BIN);
-#endif  // SC16IS752_DEBUG_SERIAL
+#if defined(SC16IS7XX_DEBUG_SERIAL)
+    SC16IS7XX_DEBUG_SERIAL.print("==Interrupt Identification Register");
+    SC16IS7XX_DEBUG_SERIAL.print(" hex: 0x");
+    SC16IS7XX_DEBUG_SERIAL.print(irq_reg, HEX);
+    SC16IS7XX_DEBUG_SERIAL.print(", bin: 0b");
+    SC16IS7XX_DEBUG_SERIAL.println(irq_reg, BIN);
+#endif  // SC16IS7XX_DEBUG_SERIAL
 
     // if there's no interrupt, return no interrupt mask
     // bit 0 is the interrupt pending bit, 1 means there's no interrupt
     if ((irq_reg & 0x01) == 1) {
-#if defined(SC16IS752_DEBUG_SERIAL)
-        SC16IS752_DEBUG_SERIAL.println("====No interrupt pending");
-#endif  // SC16IS752_DEBUG_SERIAL
+#if defined(SC16IS7XX_DEBUG_SERIAL)
+        SC16IS7XX_DEBUG_SERIAL.println("====No interrupt pending");
+#endif  // SC16IS7XX_DEBUG_SERIAL
         return SC16IS7XX_NO_INTERRUPT;
     }
 
@@ -777,13 +818,13 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
                 i2c_dev, spi_dev, SC16IS7XX_SPIREG, SC16IS7XX_REG_MSR << 3);
             uint8_t modemStatus = modemStatusReg.read() & 0x0F;
             //^ keep the bottom 4 bits which are the delta bits
-#if defined(SC16IS752_DEBUG_SERIAL)
-            SC16IS752_DEBUG_SERIAL.print("==Modem Status Register");
-            SC16IS752_DEBUG_SERIAL.print(" hex: 0x");
-            SC16IS752_DEBUG_SERIAL.print(modemStatus, HEX);
-            SC16IS752_DEBUG_SERIAL.print(", bin: 0b");
-            SC16IS752_DEBUG_SERIAL.println(modemStatus, BIN);
-#endif  // SC16IS752_DEBUG_SERIAL
+#if defined(SC16IS7XX_DEBUG_SERIAL)
+            SC16IS7XX_DEBUG_SERIAL.print("==Modem Status Register");
+            SC16IS7XX_DEBUG_SERIAL.print(" hex: 0x");
+            SC16IS7XX_DEBUG_SERIAL.print(modemStatus, HEX);
+            SC16IS7XX_DEBUG_SERIAL.print(", bin: 0b");
+            SC16IS7XX_DEBUG_SERIAL.println(modemStatus, BIN);
+#endif  // SC16IS7XX_DEBUG_SERIAL
         // tack the modem status bits onto the callback mask
             callbackMask |= modemStatus;
             break;
@@ -802,13 +843,13 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
             // flip the state if needed
             uint16_t iostate_i = iostate & 0xFF;
             if (gpioPullDirection) { iostate_i = ~iostate & 0xFF; }
-#if defined(SC16IS752_DEBUG_SERIAL)
-            SC16IS752_DEBUG_SERIAL.print("==IO State Register");
-            SC16IS752_DEBUG_SERIAL.print(" hex: 0x");
-            SC16IS752_DEBUG_SERIAL.print(iostate, HEX);
-            SC16IS752_DEBUG_SERIAL.print(", bin: 0b");
-            SC16IS752_DEBUG_SERIAL.println(iostate, BIN);
-#endif  // SC16IS752_DEBUG_SERIAL
+#if defined(SC16IS7XX_DEBUG_SERIAL)
+            SC16IS7XX_DEBUG_SERIAL.print("==IO State Register");
+            SC16IS7XX_DEBUG_SERIAL.print(" hex: 0x");
+            SC16IS7XX_DEBUG_SERIAL.print(iostate, HEX);
+            SC16IS7XX_DEBUG_SERIAL.print(", bin: 0b");
+            SC16IS7XX_DEBUG_SERIAL.println(iostate, BIN);
+#endif  // SC16IS7XX_DEBUG_SERIAL
         // tack the io bits onto the callback mask
             callbackMask |= iostate_i;
             break;
@@ -816,13 +857,13 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
         default: break;
     }
 
-#if defined(SC16IS752_DEBUG_SERIAL)
-    SC16IS752_DEBUG_SERIAL.print("====Interrupt source callback mask");
-    SC16IS752_DEBUG_SERIAL.print(" hex: 0x");
-    SC16IS752_DEBUG_SERIAL.print(callbackMask, HEX);
-    SC16IS752_DEBUG_SERIAL.print(", bin: 0b");
-    SC16IS752_DEBUG_SERIAL.println(callbackMask, BIN);
-#endif  // SC16IS752_DEBUG_SERIAL
+#if defined(SC16IS7XX_DEBUG_SERIAL)
+    SC16IS7XX_DEBUG_SERIAL.print("====Interrupt source callback mask");
+    SC16IS7XX_DEBUG_SERIAL.print(" hex: 0x");
+    SC16IS7XX_DEBUG_SERIAL.print(callbackMask, HEX);
+    SC16IS7XX_DEBUG_SERIAL.print(", bin: 0b");
+    SC16IS7XX_DEBUG_SERIAL.println(callbackMask, BIN);
+#endif  // SC16IS7XX_DEBUG_SERIAL
 
     return callbackMask;
 }
@@ -846,7 +887,7 @@ uint16_t SC16IS7XX::getInterruptSource(void) {
  *
  * On Espressif boards (ESP8266 and ESP32), the ISR must be stored in IRAM
  */
-void ISR_MEM_ACCESS SC16IS7XX::handleInterrupt(uint16_t callbackMask) {
+void ISR_MEM_ACCESS SC16IS7xx::handleInterrupt(uint16_t callbackMask) {
     // Multiple GPIO pins can be masked in the same callbackMask, but we want to
     // call the appropriate callback for each pin, so we need to loop through
     // the pins and call the callback for each one.  For
@@ -873,7 +914,7 @@ void ISR_MEM_ACCESS SC16IS7XX::handleInterrupt(uint16_t callbackMask) {
  *
  * On Espressif boards (ESP8266 and ESP32), the ISR must be stored in IRAM
  */
-void ISR_MEM_ACCESS SC16IS7XX::interruptHandler() {
+void ISR_MEM_ACCESS SC16IS7xx::interruptHandler() {
     if (_activeObject)
         _activeObject->handleInterrupt(_activeObject->getInterruptSource());
 }

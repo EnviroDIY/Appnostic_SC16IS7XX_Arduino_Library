@@ -18,12 +18,16 @@
  * ...
  */
 
-#include <SC16IS752.h>
+#include <SC16IS7xx.h>
 
+// The power pin for the external port expander, if necessary. Set to -1 if not
+// used.
 int8_t powerPin = -1;
 
-SC16IS752 ExtSerialA(SC16IS752_CHANNEL_A);
-SC16IS752 ExtSerialB(SC16IS752_CHANNEL_B);
+// Create the port expander object and empty pointers for the serial interfaces
+SC16IS7xx       ExtPort;
+SC16IS7xx_UART* ExtSerialA = nullptr;
+SC16IS7xx_UART* ExtSerialB = nullptr;
 
 int i = 0;
 
@@ -41,32 +45,36 @@ void setup() {
     Serial.println("SC16IS7XX Test");
 
     Serial.print("Checking for the SC16IS7XX...");
-    if (!ExtSerialA.begin_i2c()) {
+    if (!ExtPort.begin_i2c()) {
         Serial.println("not found. Please ensure that the module\r\nis plugged "
                        "in and securely fastened to the baseboard.");
         while (true) delay(100);
     }
     Serial.println("found!");
 
-    // set some parameters
-    ExtSerialA.enableFIFO(true);  // enable fifo
-    ExtSerialA.setBaudrate(115200);
-    ExtSerialA.setLine(8, 0, 1);  // 8,n,1
+    ExtSerialA = ExtPort.uartA();
+    ExtSerialB = ExtPort.uartB();
+    if (!ExtSerialA || !ExtSerialB) {
+        Serial.println("failed to create UART channels");
+        while (true) delay(100);
+    }
 
-    // instantiate the second channel. There is no need for additional checking
-    // here.
-    ExtSerialB.begin_i2c();
-    ExtSerialB.enableFIFO(true);  // enable fifo
-    ExtSerialB.setBaudrate(115200);
-    ExtSerialB.setLine(8, 0, 1);  // 8,n,1
+    // set some parameters
+    ExtSerialA->enableFIFO(true);  // enable fifo
+    ExtSerialA->setBaudrate(115200);
+    ExtSerialA->setLine(8, 0, 1);  // 8,n,1
+
+    ExtSerialB->enableFIFO(true);  // enable fifo
+    ExtSerialB->setBaudrate(115200);
+    ExtSerialB->setLine(8, 0, 1);  // 8,n,1
 }
 
 void loop() {
     // send data on channel b
-    ExtSerialB.write(0x55);
+    ExtSerialB->write(0x55);
 
-    if (ExtSerialA.available() > 0) {
-        if (ExtSerialA.read() != 0x55)
+    if (ExtSerialA->available() > 0) {
+        if (ExtSerialA->read() != 0x55)
             Serial.println("Error receiving loopback data");
         else
             Serial.println("Loopback data received");
