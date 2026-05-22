@@ -65,6 +65,9 @@
 #define SC16IS7XX_SPIREG ADDRBIT8_HIGH_TOREAD  ///< SPI register type
 /**@}*/
 
+#define SC16IS7XX_MAX_UART_CHANNELS (2)
+#define SC16IS7XX_MAX_GPIO_PINS (8)
+
 /**
  * @page page_device_addresses Possible Device Addresses
  *
@@ -390,18 +393,25 @@ class SC16IS7xx {
     bool gpioPullDirection = HIGH;  ///< false for pull-down, true for pull-up
 
     alignas(SC16IS7xx_UART) uint8_t
-        _uartStorage[SC16IS752_UART_CHANNELS][sizeof(SC16IS7xx_UART)];
-    SC16IS7xx_UART* uartChannels[SC16IS752_UART_CHANNELS] = {nullptr, nullptr};
+        _uartStorage[SC16IS7XX_MAX_UART_CHANNELS][sizeof(SC16IS7xx_UART)];
+    SC16IS7xx_UART*
+        uartChannels[SC16IS7XX_MAX_UART_CHANNELS] = {nullptr, nullptr};
+
+    uint8_t _uartChannelCount;
+    uint8_t _gpioPinCount;
 
     bool _init(void);
 
-    voidFxnPtr ISRcallback[SC16IS752_GPIO_PINS + SC16IS7XX_NON_GPIO_INTERRUPTS];
-    uint16_t   ISRlist[SC16IS752_GPIO_PINS + SC16IS7XX_NON_GPIO_INTERRUPTS];
+    voidFxnPtr
+        ISRcallback[SC16IS7XX_MAX_GPIO_PINS + SC16IS7XX_NON_GPIO_INTERRUPTS];
+    uint16_t ISRlist[SC16IS7XX_MAX_GPIO_PINS + SC16IS7XX_NON_GPIO_INTERRUPTS];
     uint8_t    nints;  // Stores total number of attached interrupts
 
  protected:
     Adafruit_I2CDevice* i2c_dev = nullptr;  ///< Pointer to I2C bus interface
     Adafruit_SPIDevice* spi_dev = nullptr;  ///< Pointer to SPI bus interface
+
+     SC16IS7xx(uint8_t uartChannelCount, uint8_t gpioPinCount);
 
     virtual void resetDevice();
     virtual bool ping();
@@ -424,11 +434,6 @@ class SC16IS7xx {
     bool gpioInterruptsLatched = false;
 
  public:
-    /**
-     * @brief Construct a new SC16IS7xx object.
-     */
-    SC16IS7xx() = default;
-
     /**
      * @brief Destroy the SC16IS7xx object.
      */
@@ -496,6 +501,13 @@ class SC16IS7xx {
     void setGPIOPullDirection(bool pullUp);
     bool getGPIOPullDirection();
 
+    uint8_t getUARTChannelCount() const {
+        return _uartChannelCount;
+    }
+    uint8_t getGPIOPinCount() const {
+        return _gpioPinCount;
+    }
+
     // gpio - need a uniquely named function for each of the digital read/write
     // and pin mode functions to not conflict with defines in some of the cores
     void    pinModeExternal(uint8_t pin, uint8_t mode);
@@ -548,6 +560,39 @@ class SC16IS7xx {
     void        handleInterrupt(uint16_t callbackMask);
     static void interruptHandler(void);
 };
+
+template <uint8_t UartChannels, uint8_t GpioPins>
+struct SC16IS7xxChipTraits {
+    static constexpr uint8_t UART_CHANNELS = UartChannels;
+    static constexpr uint8_t GPIO_PINS     = GpioPins;
+};
+
+using SC16IS740Traits =
+    SC16IS7xxChipTraits<SC16IS740_UART_CHANNELS, SC16IS740_GPIO_PINS>;
+using SC16IS750Traits =
+    SC16IS7xxChipTraits<SC16IS750_UART_CHANNELS, SC16IS750_GPIO_PINS>;
+using SC16IS760Traits =
+    SC16IS7xxChipTraits<SC16IS760_UART_CHANNELS, SC16IS760_GPIO_PINS>;
+using SC16IS752Traits =
+    SC16IS7xxChipTraits<SC16IS752_UART_CHANNELS, SC16IS752_GPIO_PINS>;
+using SC16IS762Traits =
+    SC16IS7xxChipTraits<SC16IS762_UART_CHANNELS, SC16IS762_GPIO_PINS>;
+
+template <typename Traits>
+class SC16IS7xxChip : public SC16IS7xx {
+ public:
+    SC16IS7xxChip()
+        : SC16IS7xx(Traits::UART_CHANNELS, Traits::GPIO_PINS) {}
+};
+
+template <typename Traits>
+using SC16IS7xxT = SC16IS7xxChip<Traits>;
+
+using SC16IS740 = SC16IS7xxChip<SC16IS740Traits>;
+using SC16IS750 = SC16IS7xxChip<SC16IS750Traits>;
+using SC16IS760 = SC16IS7xxChip<SC16IS760Traits>;
+using SC16IS752 = SC16IS7xxChip<SC16IS752Traits>;
+using SC16IS762 = SC16IS7xxChip<SC16IS762Traits>;
 
 #endif  // _SC16IS7XX_H_
 

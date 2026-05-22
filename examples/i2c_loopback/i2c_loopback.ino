@@ -25,7 +25,7 @@
 int8_t powerPin = -1;
 
 // Create the port expander object and empty pointers for the serial interfaces
-SC16IS7xx       ExtPort;
+SC16IS752       ExtPort;
 SC16IS7xx_UART* ExtSerialA = nullptr;
 SC16IS7xx_UART* ExtSerialB = nullptr;
 

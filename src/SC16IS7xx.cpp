@@ -14,6 +14,16 @@
 // Pointer to active SC16IS7xx object
 SC16IS7xx* SC16IS7xx::_activeObject = nullptr;
 
+SC16IS7xx::SC16IS7xx(uint8_t uartChannelCount, uint8_t gpioPinCount)
+    : _uartChannelCount(
+          uartChannelCount > SC16IS7XX_MAX_UART_CHANNELS
+              ? SC16IS7XX_MAX_UART_CHANNELS
+              : uartChannelCount),
+      _gpioPinCount(gpioPinCount > SC16IS7XX_MAX_GPIO_PINS
+                        ? SC16IS7XX_MAX_GPIO_PINS
+                        : gpioPinCount),
+      nints(0) {}
+
 SC16IS7xx::~SC16IS7xx() {
     releaseUARTs();
     if (i2c_dev) {
@@ -70,7 +80,7 @@ void SC16IS7xx::resetDevice() {
  * @return true if the device is online, false otherwise
  */
 bool SC16IS7xx::ping() {
-    for (uint8_t channel = 0; channel < 2; channel++) {
+    for (uint8_t channel = 0; channel < _uartChannelCount; channel++) {
         Adafruit_BusIO_Register SPR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                     (SC16IS7XX_REG_SPR << 3 | channel << 1));
         // two attempts to write and read from the scratchpad register
@@ -205,7 +215,7 @@ void SC16IS7xx::end() {
 }
 
 SC16IS7xx_UART* SC16IS7xx::getUART(uint8_t channel, bool createIfMissing) {
-    if (channel >= SC16IS752_UART_CHANNELS) { return nullptr; }
+    if (channel >= _uartChannelCount) { return nullptr; }
 
     SC16IS7xx_UART*& uart = uartChannels[channel];
     if (!uart && createIfMissing) {
@@ -216,7 +226,7 @@ SC16IS7xx_UART* SC16IS7xx::getUART(uint8_t channel, bool createIfMissing) {
 }
 
 void SC16IS7xx::releaseUART(uint8_t channel) {
-    if (channel >= SC16IS752_UART_CHANNELS) { return; }
+    if (channel >= _uartChannelCount) { return; }
 
     SC16IS7xx_UART*& uart = uartChannels[channel];
     if (uart) {
@@ -226,7 +236,7 @@ void SC16IS7xx::releaseUART(uint8_t channel) {
 }
 
 void SC16IS7xx::releaseUARTs() {
-    for (uint8_t channel = 0; channel < SC16IS752_UART_CHANNELS; channel++) {
+    for (uint8_t channel = 0; channel < _uartChannelCount; channel++) {
         releaseUART(channel);
     }
 }
@@ -252,6 +262,7 @@ void SC16IS7xx::releaseUARTs() {
  * to change the pull resistor configuration.
  */
 void SC16IS7xx::pinModeExternal(uint8_t pin, uint8_t mode) {
+    if (pin >= _gpioPinCount) { return; }
     Adafruit_BusIO_Register     IODir(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                       SC16IS7XX_REG_IODIR << 3);
     Adafruit_BusIO_RegisterBits dir_bit(&IODir, 1, pin % 8);
@@ -269,6 +280,7 @@ void SC16IS7xx::pinModeExternal(uint8_t pin, uint8_t mode) {
  * versions to avoid conflicts with built-in pin functions.
  */
 void SC16IS7xx::digitalWriteExternal(uint8_t pin, uint8_t state) {
+    if (pin >= _gpioPinCount) { return; }
     Adafruit_BusIO_Register     IOState(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                         SC16IS7XX_REG_IOSTATE << 3);
     Adafruit_BusIO_RegisterBits state_bit(&IOState, 1, pin % 8);
@@ -289,6 +301,7 @@ void SC16IS7xx::digitalWriteExternal(uint8_t pin, uint8_t state) {
  * this function will not be valid.
  */
 uint8_t SC16IS7xx::digitalReadExternal(uint8_t pin) {
+    if (pin >= _gpioPinCount) { return LOW; }
     Adafruit_BusIO_Register     IOState(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                         SC16IS7XX_REG_IOSTATE << 3);
     Adafruit_BusIO_RegisterBits state_bit(&IOState, 1, pin % 8);
@@ -365,7 +378,7 @@ bool SC16IS7xx::isSleepEnabled() {
  * to enable an interrupt.
  */
 void SC16IS7xx::setPinInterrupt(uint8_t pin, bool enabled) {
-    if (pin > 7) {
+    if (pin >= _gpioPinCount) {
         // Invalid pin number, do nothing or handle error as needed
         return;
     }
@@ -390,6 +403,7 @@ void SC16IS7xx::setPinInterrupt(uint8_t pin, bool enabled) {
  * @return the interrupt enable status, either LOW (0) or HIGH (1)
  */
 uint8_t SC16IS7xx::getPinInterrupt(uint8_t pin) {
+    if (pin >= _gpioPinCount) { return LOW; }
     Adafruit_BusIO_Register     IOIntEna(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                          SC16IS7XX_REG_IOINTENA << 3);
     Adafruit_BusIO_RegisterBits enable_bit(&IOIntEna, 1, pin % 8);
@@ -490,6 +504,9 @@ void SC16IS7xx::storeCallback(uint16_t callbackMask, voidFxnPtr callback) {
         }
         if (current == nints) {
             // Need to make a new entry
+            if (nints >= (_gpioPinCount + SC16IS7XX_NON_GPIO_INTERRUPTS)) {
+                return;
+            }
             nints++;
         }
         ISRlist[current] = callbackMask;  // List of interrupt in order of when
@@ -565,7 +582,7 @@ void SC16IS7xx::callCallback(uint16_t callbackMask) {
  * digitalReadExternal or getPortState.
  */
 void SC16IS7xx::attachPinInterrupt(uint8_t pin, voidFxnPtr callback, uint8_t) {
-    if (pin > 7) {
+    if (pin >= _gpioPinCount) {
         // Invalid pin number, do nothing or handle error as needed
         return;
     }
@@ -596,7 +613,7 @@ void SC16IS7xx::attachPinInterrupt(uint8_t pin, voidFxnPtr callback, uint8_t) {
  * @param pin the pin number on the port expander (0 - 7)
  */
 void SC16IS7xx::detachPinInterrupt(uint8_t pin) {
-    if (pin > 7) {
+    if (pin >= _gpioPinCount) {
         // Invalid pin number, do nothing or handle error as needed
         return;
     }
@@ -697,7 +714,7 @@ void SC16IS7xx::printInterruptSource(uint16_t callbackMask) {
                 break;
             }
 
-            for (uint8_t pin = 0; pin < 8; pin++) {
+            for (uint8_t pin = 0; pin < _gpioPinCount; pin++) {
                 if (((callbackMask & 0x00FFu) & (1u << pin)) == (1u << pin)) {
                     SC16IS7XX_DEBUG_SERIAL.print("GPIO pin change interrupt");
                     SC16IS7XX_DEBUG_SERIAL.print(", pin ");
@@ -873,7 +890,7 @@ void ISR_MEM_ACCESS SC16IS7xx::handleInterrupt(uint16_t callbackMask) {
     // call the appropriate callback for each pin, so we need to loop through
     // the pins and call the callback for each one.  For
     if (((callbackMask >> 8) == SC16IS7XX_IIR_GPIO) && gpioInterruptsLatched) {
-        for (uint8_t pin = 0; pin < 8; pin++) {
+        for (uint8_t pin = 0; pin < _gpioPinCount; pin++) {
             if (((callbackMask & 0x00FFu) & (1u << pin)) == (1u << pin)) {
                 uint16_t searchCallbackMask = SC16IS7XX_IIR_GPIO << 8 |
                     (1u << pin);

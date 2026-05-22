@@ -23,7 +23,7 @@
 int8_t powerPin = -1;
 
 // Create the port expander object and an empty pointer for the serial interface
-SC16IS7xx       ExtPort;
+SC16IS752       ExtPort;
 SC16IS7xx_UART* ExtSerial = nullptr;
 
 // The GPIO pin on the SC16IS7XX to use for the interrupt test
