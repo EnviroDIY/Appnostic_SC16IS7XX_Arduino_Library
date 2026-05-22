@@ -79,7 +79,7 @@ class SC16IS7xx_UART : public Stream {
     SC16IS7xx* _owner;
     uint8_t    _channel;
     uint32_t   _crystalFrequency = SC16IS7XX_DEFAULT_XTAL_FREQ;
-    bool       _peek_flag = 0;  ///< Flag to indicate if there's a peeked byte
+    bool _peek_flag = false;  ///< Flag to indicate if there's a peeked byte
     int _peek_buf = -1;  ///< peeked byte value, valid only if _peek_flag is set
 
     uint8_t FIFOAvailableData();
@@ -166,16 +166,16 @@ class SC16IS7xx_UART : public Stream {
                uint8_t stopBits);
 
     // stream reading
-    int read();
+    int read() override;
     int read(uint8_t* buf, size_t size);
-    int available();
-    int peek();
+    int available() override;
+    int peek() override;
 
     // stream writing
-    size_t write(const uint8_t* buf, size_t size);
-    size_t write(uint8_t c);
+    size_t write(const uint8_t* buf, size_t size) override;
+    size_t write(uint8_t c) override;
     size_t write(const char* str);
-    void   flush();
+    void   flush() override;
 };
 
 #endif  // _SC16IS7XX_UART_H_
