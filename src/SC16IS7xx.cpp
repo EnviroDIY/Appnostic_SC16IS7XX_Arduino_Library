@@ -273,6 +273,11 @@ void SC16IS7xx::pinModeExternal(uint8_t pin, uint8_t mode) {
  */
 void SC16IS7xx::digitalWriteExternal(uint8_t pin, uint8_t state) {
     if (pin >= _gpioPinCount) { return; }
+
+    // // Put the pin in output mode
+    // pinModeExternal(pin, OUTPUT);
+
+    // Set the pin state
     Adafruit_BusIO_Register     IOState(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                         SC16IS7XX_REG_IOSTATE << 3);
     Adafruit_BusIO_RegisterBits state_bit(&IOState, 1, pin % 8);
@@ -294,6 +299,11 @@ void SC16IS7xx::digitalWriteExternal(uint8_t pin, uint8_t state) {
  */
 uint8_t SC16IS7xx::digitalReadExternal(uint8_t pin) {
     if (pin >= _gpioPinCount) { return LOW; }
+
+    // // Put the pin in input mode
+    // pinModeExternal(pin, INPUT);
+
+    // Get the pin state
     Adafruit_BusIO_Register     IOState(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
                                         SC16IS7XX_REG_IOSTATE << 3);
     Adafruit_BusIO_RegisterBits state_bit(&IOState, 1, pin % 8);
@@ -599,6 +609,8 @@ void SC16IS7xx::attachPinInterrupt(uint8_t pin, voidFxnPtr callback, uint8_t) {
     // Store the interrupt callback.
     storeCallback(callbackMask, callback);
 
+    // Put the pin in input mode
+    pinModeExternal(pin, INPUT);
     // Enable pin interrupt for the pin
     setPinInterrupt(pin, true);
 }
