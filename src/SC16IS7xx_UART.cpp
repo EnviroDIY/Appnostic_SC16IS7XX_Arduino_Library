@@ -12,7 +12,8 @@
 
 /**
  * @brief constructor for SC16IS7xx_UART
- * @param channel
+ * @param channel The UART channel number (0 for channel A, 1 for channel B)
+ * @param owner Pointer to the SC16IS7xx object that owns this UART channel
  */
 SC16IS7xx_UART::SC16IS7xx_UART(SC16IS7xx* owner, uint8_t channel)
     : _owner(owner),

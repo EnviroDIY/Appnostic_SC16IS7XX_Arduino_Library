@@ -54,12 +54,14 @@
 #define SC16IS760_GPIO_PINS (8)  ///< Number of GPIO pins on SC16IS760
 #define SC16IS752_GPIO_PINS (8)  ///< Number of GPIO pins on SC16IS752
 #define SC16IS762_GPIO_PINS (8)  ///< Number of GPIO pins on SC16IS762
-#define SC16IS7XX_NON_GPIO_INTERRUPTS \
-    (11)  ///< The number of non-pin-related interrupt sources (DSR, DTR, CD,
-          ///< RI,
-          ///< CTS, RTS, XOFF, RLS, RHR, THR, Timeout) on the device. These
-///< interrupts are shared between both channels and are not related to
-///< the GPIO pins.
+
+/**
+ * @brief The number of non-pin-related interrupt sources (DSR, DTR, CD, RI,
+ * CTS, RTS, XOFF, RLS, RHR, THR, Timeout) on the device. These interrupts are
+ * shared between both channels and are not related to the GPIO pins.
+ */
+#define SC16IS7XX_NON_GPIO_INTERRUPTS (11)
+
 #define SC16IS7XX_SPIREG ADDRBIT8_HIGH_TOREAD  ///< SPI register type
 /**@}*/
 

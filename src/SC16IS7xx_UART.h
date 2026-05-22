@@ -91,6 +91,11 @@ class SC16IS7xx_UART : public Stream {
  public:
     SC16IS7xx_UART(SC16IS7xx* owner, uint8_t channel);
 
+    /**
+     * @brief Set the SC16IS7xx object that owns this UART channel
+     *
+     * @param owner Pointer to the SC16IS7xx object that owns this UART channel
+     */
     void setOwner(SC16IS7xx* owner) {
         _owner = owner;
     }
