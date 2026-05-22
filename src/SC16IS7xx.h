@@ -459,9 +459,14 @@ class SC16IS7xx {
 
     /**
      * @brief Get channel B UART interface.
-     * @return Reference to channel B interface.
+     * @warning On single-UART parts, this returns channel A.
+     * @return Reference to channel B interface, if the device has two UART
+     * channels, otherwise channel A.
      */
     SC16IS7xx_UART& uartB() {
+        if (_uartChannelCount == 1) {
+            return _uartStorage[SC16IS7XX_CHANNEL_A];
+        }
         return _uartStorage[SC16IS7XX_CHANNEL_B];
     }
 
