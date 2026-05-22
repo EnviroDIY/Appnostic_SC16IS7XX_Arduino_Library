@@ -385,7 +385,6 @@ class SC16IS7xx {
  private:
     friend class SC16IS7xx_UART;
 
-    uint32_t crystal_frequency = SC16IS7XX_DEFAULT_XTAL_FREQ;
     bool gpioPullDirection = HIGH;  ///< false for pull-down, true for pull-up
 
     alignas(SC16IS7xx_UART) uint8_t
@@ -492,8 +491,6 @@ class SC16IS7xx {
     void end();
 
     // configuration
-    void     setCrystalFrequency(uint32_t frequency);
-    uint32_t getCrystalFrequency();
     void     setGPIOPullDirection(bool pullUp);
     bool     getGPIOPullDirection();
 

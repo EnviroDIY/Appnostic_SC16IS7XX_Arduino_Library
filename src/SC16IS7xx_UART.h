@@ -78,6 +78,7 @@ class SC16IS7xx_UART : public Stream {
  private:
     SC16IS7xx* _owner;
     uint8_t    _channel;
+    uint32_t   _crystalFrequency = SC16IS7XX_DEFAULT_XTAL_FREQ;
     bool       _peek_flag = 0;  ///< Flag to indicate if there's a peeked byte
     int _peek_buf = -1;  ///< peeked byte value, valid only if _peek_flag is set
 
@@ -95,6 +96,9 @@ class SC16IS7xx_UART : public Stream {
     }
 
     // uart configuration
+    void     setCrystalFrequency(uint32_t frequency);
+    uint32_t getCrystalFrequency() const;
+
     void enableFIFO(bool enabled);
     void resetFIFO(bool rx);
     void setFIFOTriggerLevel(bool rx, uint8_t length);

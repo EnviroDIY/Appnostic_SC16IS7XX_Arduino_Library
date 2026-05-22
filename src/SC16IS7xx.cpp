@@ -27,28 +27,6 @@ SC16IS7xx::~SC16IS7xx() {
     if (_activeObject == this) { _activeObject = nullptr; }
 }
 
-/*** CONFIG *******************************************************/
-
-/**
- * @brief sets the crystal frequency in hertz.
- * @note Defaults to 14745600 (Hz).  A 14.7456MHz crystal is commonly used with
- * the SC16IS7XX family and is the default for this library, but other
- * frequencies may be used. The crystal frequency is used to calculate baud
- * rates and should be set correctly for accurate baud rates.
- * @param frequency the frequency of the crystal in hertz
- */
-void SC16IS7xx::setCrystalFrequency(uint32_t frequency) {
-    crystal_frequency = frequency;
-}
-
-/**
- * @brief gets the xtal frequency in hertz.
- * @return the frequency of the crystal in hertz
- */
-uint32_t SC16IS7xx::getCrystalFrequency() {
-    return crystal_frequency;
-}
-
 /**
  * @brief sets the GPIO pull direction.
  * @param pullUp true for pull-up, false for pull-down

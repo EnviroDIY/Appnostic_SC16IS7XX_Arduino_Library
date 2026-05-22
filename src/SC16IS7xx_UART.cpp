@@ -17,10 +17,27 @@
 SC16IS7xx_UART::SC16IS7xx_UART(SC16IS7xx* owner, uint8_t channel)
     : _owner(owner),
       _channel(channel),
+      _crystalFrequency(SC16IS7XX_DEFAULT_XTAL_FREQ),
       _peek_flag(0),
       _peek_buf(-1) {}
 
 /*** UART CONFIGURATION *****************************************/
+
+/**
+ * @brief sets the crystal frequency in hertz.
+ * @param frequency the frequency of the crystal in hertz
+ */
+void SC16IS7xx_UART::setCrystalFrequency(uint32_t frequency) {
+    _crystalFrequency = frequency;
+}
+
+/**
+ * @brief gets the crystal frequency in hertz.
+ * @return the frequency of the crystal in hertz
+ */
+uint32_t SC16IS7xx_UART::getCrystalFrequency() const {
+    return _crystalFrequency;
+}
 
 /**
  * @brief enables fifo buffer
@@ -123,13 +140,13 @@ void SC16IS7xx_UART::setBaudrate(uint32_t baudRate) {
 
     // calculate the divisor assuming no prescaler (prescaler = 1)
     prescaler = 1;
-    divisor   = (_owner->getCrystalFrequency() / prescaler) / (baudRate * 16);
+    divisor   = (getCrystalFrequency() / prescaler) / (baudRate * 16);
 
     if (divisor > 0xFFFF) {
         // if the divisor is too large, set the prescaler to divide the clock by
         // 4 and recalculate the divisor
         prescaler = 4;
-        divisor = (_owner->getCrystalFrequency() / prescaler) / (baudRate * 16);
+        divisor = (getCrystalFrequency() / prescaler) / (baudRate * 16);
     }
 
     // the prescaler is considered to be an enhanced function, so we need to set
@@ -181,8 +198,7 @@ void SC16IS7xx_UART::setBaudrate(uint32_t baudRate) {
 
 
 #if defined(SC16IS7XX_DEBUG_SERIAL)
-    float actual_baudrate = (_owner->getCrystalFrequency() / prescaler) /
-        (16 * divisor);
+    float actual_baudrate = (getCrystalFrequency() / prescaler) / (16 * divisor);
     float error = (actual_baudrate - baudRate) * 100 / baudRate;
     SC16IS7XX_DEBUG_SERIAL.print("Desired baudrate: ");
     SC16IS7XX_DEBUG_SERIAL.println(baudRate, DEC);

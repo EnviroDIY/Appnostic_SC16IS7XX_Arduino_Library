@@ -20,8 +20,8 @@ It should also work with the SC16IS750, though that chip only supports one UART 
 
 As the library interfaces with the SC16IS752 or SC16IS762 via I2C or SPI it should communicate just fine with most hardware variants provided the following is observed:
 
-- The default crystal frequency is 14.7456MHz (147456000Hz). If a different crystal is used you must call the `setCrystalFrequency(frequency)` method before `setBaudRate` so that the correct divisor can be calculated.
-- The default I2C address is 0x4D (8-bit address of 0x90). That is the address for a chip with both A0 and A1 pulled HIGH.  If a different address configuration is needed, you must set it in the `begin_i2c(addr, Wire)` function
+- The default crystal frequency is 14.7456MHz (14745600Hz). If a different crystal is used you must either call `setCrystalFrequency(frequency)` on your `SC16IS7xx_UART` object before `setBaudRate` or define `SC16IS7XX_DEFAULT_XTAL_FREQ=xx` with a build flag so that the correct divisor can be calculated.
+- The default I2C address is 0x4D (8-bit address of 0x90). That is the address for a chip with both A0 and A1 pulled HIGH.  If a different address configuration is needed, you must either set it in the `begin_i2c(addr, Wire)` function or define `SC16IS7XX_DEFAULT_ADDRESS=xx` with a build flag.
 
 ## Library Credits and Provenance
 
