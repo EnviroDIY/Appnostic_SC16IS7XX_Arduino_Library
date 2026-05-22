@@ -624,9 +624,18 @@ void SC16IS7xx::detachPinInterrupt(uint8_t pin) {
 
     // clear the callback for the interrupt
     if (gpioInterruptsLatched) {
+        // if interrupts are latched, we can clear the callback for the specific
+        // pin that we just disabled
         clearCallback(callbackMask);
     } else {
-        clearCallback(globalMask);
+        // if interrupts are not latched, we have to check if any other pins
+        // still have interrupts enabled before clearing the global callback
+        Adafruit_BusIO_Register IOIntEna(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                         SC16IS7XX_REG_IOINTENA << 3);
+        uint8_t                 enabledPins = IOIntEna.read();
+        uint8_t                 gpioMask    = (_gpioPinCount >= 8) ? 0xFF
+                                                                   : ((1u << _gpioPinCount) - 1u);
+        if ((enabledPins & gpioMask) == 0) { clearCallback(globalMask); }
     }
 }
 
