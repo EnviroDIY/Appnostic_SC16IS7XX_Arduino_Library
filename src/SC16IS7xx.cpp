@@ -20,10 +20,14 @@ SC16IS7xx::SC16IS7xx(uint8_t uartChannelCount, uint8_t gpioPinCount)
       _gpioPinCount(gpioPinCount > SC16IS7XX_MAX_GPIO_PINS
                         ? SC16IS7XX_MAX_GPIO_PINS
                         : gpioPinCount),
-      nints(0) {}
+      nints(0) {
+    for (uint8_t channel = 0; channel < SC16IS7XX_MAX_UART_CHANNELS;
+         channel++) {
+        _uartStorage[channel].configure(this, channel);
+    }
+}
 
 SC16IS7xx::~SC16IS7xx() {
-    releaseUARTs();
     if (i2c_dev) {
         delete i2c_dev;
         i2c_dev = nullptr;
@@ -213,31 +217,9 @@ void SC16IS7xx::end() {
     if (this == _activeObject) { _activeObject = nullptr; }
 }
 
-SC16IS7xx_UART* SC16IS7xx::getUART(uint8_t channel, bool createIfMissing) {
+SC16IS7xx_UART* SC16IS7xx::getUART(uint8_t channel) {
     if (channel >= _uartChannelCount) { return nullptr; }
-
-    SC16IS7xx_UART*& uart = uartChannels[channel];
-    if (!uart && createIfMissing) {
-        uart = new (static_cast<void*>(&_uartStorage[channel][0]))
-            SC16IS7xx_UART(this, channel);
-    }
-    return uart;
-}
-
-void SC16IS7xx::releaseUART(uint8_t channel) {
-    if (channel >= _uartChannelCount) { return; }
-
-    SC16IS7xx_UART*& uart = uartChannels[channel];
-    if (uart) {
-        uart->~SC16IS7xx_UART();
-        uart = nullptr;
-    }
-}
-
-void SC16IS7xx::releaseUARTs() {
-    for (uint8_t channel = 0; channel < _uartChannelCount; channel++) {
-        releaseUART(channel);
-    }
+    return &_uartStorage[channel];
 }
 
 

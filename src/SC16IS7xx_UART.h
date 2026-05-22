@@ -76,8 +76,13 @@ class SC16IS7xx;
  */
 class SC16IS7xx_UART : public Stream {
  private:
-    SC16IS7xx* _owner;
-    uint8_t    _channel;
+    friend class SC16IS7xx;
+
+    SC16IS7xx_UART();
+    SC16IS7xx_UART(SC16IS7xx* owner, uint8_t channel);
+
+    SC16IS7xx* _owner            = nullptr;
+    uint8_t    _channel          = SC16IS7XX_CHANNEL_A;
     uint32_t   _crystalFrequency = SC16IS7XX_DEFAULT_XTAL_FREQ;
     bool _peek_flag = false;  ///< Flag to indicate if there's a peeked byte
     int _peek_buf = -1;  ///< peeked byte value, valid only if _peek_flag is set
@@ -88,8 +93,16 @@ class SC16IS7xx_UART : public Stream {
     int     rawRead(uint8_t* buf, size_t size);
     void    EnableTransmit(uint8_t tx_enable);
 
+    /**
+     * @brief Configure or reconfigure this UART channel binding.
+     *
+     * @param owner Pointer to the SC16IS7xx object that owns this UART
+     * channel.
+     * @param channel UART channel index.
+     */
+    void configure(SC16IS7xx* owner, uint8_t channel);
+
  public:
-    SC16IS7xx_UART(SC16IS7xx* owner, uint8_t channel);
 
     /**
      * @brief Set the SC16IS7xx object that owns this UART channel

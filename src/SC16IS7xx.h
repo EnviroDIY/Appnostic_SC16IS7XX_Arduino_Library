@@ -22,13 +22,6 @@
 #include <Adafruit_I2CDevice.h>
 #include <Adafruit_SPIDevice.h>
 
-#if __has_include(<new>)
-#include <new>
-#else
-void* operator new(size_t, void* ptr) noexcept;
-void  operator delete(void*, void*) noexcept;
-#endif
-
 /**
  * @def ISR_MEM_ACCESS
  * @brief Defines a memory access location, if needed for the interrupts service
@@ -398,10 +391,7 @@ class SC16IS7xx {
 
     bool gpioPullDirection = HIGH;  ///< false for pull-down, true for pull-up
 
-    alignas(SC16IS7xx_UART) uint8_t
-        _uartStorage[SC16IS7XX_MAX_UART_CHANNELS][sizeof(SC16IS7xx_UART)];
-    SC16IS7xx_UART* uartChannels[SC16IS7XX_MAX_UART_CHANNELS] = {nullptr,
-                                                                 nullptr};
+    SC16IS7xx_UART _uartStorage[SC16IS7XX_MAX_UART_CHANNELS];
 
     uint8_t _uartChannelCount;
     uint8_t _gpioPinCount;
@@ -449,44 +439,25 @@ class SC16IS7xx {
      * @brief Get a UART channel interface by channel index.
      * @param channel Channel number (SC16IS7XX_CHANNEL_A or
      * SC16IS7XX_CHANNEL_B).
-     * @param createIfMissing If true, constructs the channel object on first
-     * use in internal fixed storage.
-     * @return Pointer to the channel object, or nullptr for invalid channel or
-     * when createIfMissing is false and the channel has not been created yet.
+     * @return Pointer to the channel object, or nullptr for invalid channel.
      */
-    SC16IS7xx_UART* getUART(uint8_t channel, bool createIfMissing = true);
+    SC16IS7xx_UART* getUART(uint8_t channel);
 
     /**
      * @brief Get channel A UART interface.
-     * @param createIfMissing If true, creates channel A on first use.
-     * @return Pointer to channel A interface or nullptr if not created and
-     * createIfMissing is false.
+     * @return Pointer to channel A interface.
      */
-    SC16IS7xx_UART* uartA(bool createIfMissing = true) {
-        return getUART(SC16IS7XX_CHANNEL_A, createIfMissing);
+    SC16IS7xx_UART* uartA() {
+        return getUART(SC16IS7XX_CHANNEL_A);
     }
 
     /**
      * @brief Get channel B UART interface.
-     * @param createIfMissing If true, creates channel B on first use.
-     * @return Pointer to channel B interface or nullptr if not created and
-     * createIfMissing is false.
+     * @return Pointer to channel B interface.
      */
-    SC16IS7xx_UART* uartB(bool createIfMissing = true) {
-        return getUART(SC16IS7XX_CHANNEL_B, createIfMissing);
+    SC16IS7xx_UART* uartB() {
+        return getUART(SC16IS7XX_CHANNEL_B);
     }
-
-    /**
-     * @brief Destroy one lazily created UART channel object.
-     * @param channel Channel number (SC16IS7XX_CHANNEL_A or
-     * SC16IS7XX_CHANNEL_B).
-     */
-    void releaseUART(uint8_t channel);
-
-    /**
-     * @brief Destroy all lazily created UART channel objects.
-     */
-    void releaseUARTs();
 
     // i2c
     bool begin_i2c(uint8_t  addr    = SC16IS7XX_DEFAULT_ADDRESS,

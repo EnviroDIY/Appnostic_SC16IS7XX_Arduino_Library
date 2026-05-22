@@ -11,16 +11,32 @@
 #include "SC16IS7xx.h"
 
 /**
+ * @brief default constructor for SC16IS7xx_UART
+ */
+SC16IS7xx_UART::SC16IS7xx_UART()
+    : _owner(nullptr),
+      _channel(SC16IS7XX_CHANNEL_A),
+      _crystalFrequency(SC16IS7XX_DEFAULT_XTAL_FREQ),
+      _peek_flag(0),
+      _peek_buf(-1) {}
+
+/**
  * @brief constructor for SC16IS7xx_UART
  * @param owner Pointer to the SC16IS7xx object that owns this UART channel
  * @param channel The UART channel number (0 for channel A, 1 for channel B)
  */
 SC16IS7xx_UART::SC16IS7xx_UART(SC16IS7xx* owner, uint8_t channel)
-    : _owner(owner),
-      _channel(channel),
-      _crystalFrequency(SC16IS7XX_DEFAULT_XTAL_FREQ),
-      _peek_flag(0),
-      _peek_buf(-1) {}
+    : SC16IS7xx_UART() {
+    configure(owner, channel);
+}
+
+void SC16IS7xx_UART::configure(SC16IS7xx* owner, uint8_t channel) {
+    _owner            = owner;
+    _channel          = channel;
+    _crystalFrequency = SC16IS7XX_DEFAULT_XTAL_FREQ;
+    _peek_flag        = false;
+    _peek_buf         = -1;
+}
 
 /*** UART CONFIGURATION *****************************************/
 
