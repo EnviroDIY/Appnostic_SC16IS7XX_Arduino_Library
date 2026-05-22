@@ -93,13 +93,6 @@ class SC16IS7xx_UART : public Stream {
     int     rawRead(uint8_t* buf, size_t size);
     void    EnableTransmit(uint8_t tx_enable);
 
-    /**
-     * @brief Configure or reconfigure this UART channel binding.
-     *
-     * @param owner Pointer to the SC16IS7xx object that owns this UART
-     * channel.
-     * @param channel UART channel index.
-     */
     void configure(SC16IS7xx* owner, uint8_t channel);
 
  public:

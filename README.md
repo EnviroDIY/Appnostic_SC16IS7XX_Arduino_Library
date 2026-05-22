@@ -31,7 +31,7 @@ Use an explicit chip type that matches your hardware:
 - SC16IS752: 2 UART channels, 8 GPIO pins
 - SC16IS762: 2 UART channels, 8 GPIO pins
 
-The driver is implemented once and configured by compile-time chip traits plus per-instance capability limits.
+The driver is implemented once and configured by compile-time chip traits and per-instance capability limits.
 This means the same API is available for all variants, while channel and GPIO bounds are enforced for the selected chip.
 
 Typical setup flow:

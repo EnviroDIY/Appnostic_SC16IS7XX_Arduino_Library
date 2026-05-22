@@ -613,8 +613,8 @@ void SC16IS7xx::detachPinInterrupt(uint8_t pin) {
     // disable pin interrupt for the pin
     setPinInterrupt(pin, false);
 
-    // Clear both possible callback masks: the per-pin latched form and the
-    // global non-latched form.
+    // Clear the appropriate callback mask based on the current latching mode:
+    // per-pin form when latched, global form when not latched.
     uint16_t pinMask      = 1 << pin;
     uint16_t callbackMask = SC16IS7XX_IIR_GPIO << 8 | pinMask;
     uint16_t globalMask   = SC16IS7XX_IIR_GPIO << 8;

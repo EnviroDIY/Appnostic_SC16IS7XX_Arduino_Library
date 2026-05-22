@@ -30,6 +30,13 @@ SC16IS7xx_UART::SC16IS7xx_UART(SC16IS7xx* owner, uint8_t channel)
     configure(owner, channel);
 }
 
+/**
+ * @brief Configure or reconfigure this UART channel binding.
+ *
+ * @param owner Pointer to the SC16IS7xx object that owns this UART
+ * channel.
+ * @param channel UART channel index.
+ */
 void SC16IS7xx_UART::configure(SC16IS7xx* owner, uint8_t channel) {
     _owner            = owner;
     _channel          = channel;
