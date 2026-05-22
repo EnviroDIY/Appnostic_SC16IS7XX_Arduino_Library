@@ -12,8 +12,8 @@
 
 /**
  * @brief constructor for SC16IS7xx_UART
- * @param channel The UART channel number (0 for channel A, 1 for channel B)
  * @param owner Pointer to the SC16IS7xx object that owns this UART channel
+ * @param channel The UART channel number (0 for channel A, 1 for channel B)
  */
 SC16IS7xx_UART::SC16IS7xx_UART(SC16IS7xx* owner, uint8_t channel)
     : _owner(owner),
@@ -89,15 +89,26 @@ void SC16IS7xx_UART::setFIFOTriggerLevel(bool rx, uint8_t length) {
     Adafruit_BusIO_RegisterBits enable_bit(&MCR, 1, 2);
     enable_bit.write(true);
 
-    // set the length of the FIFO trigger level. The length bits for the RX FIFO
-    // trigger are in bits 7:4 and the length bits for the TX FIFO trigger are
-    // in bits 3:0 of the TLR (Trigger Level Register). The higher bit is the
-    // MSB (ie, MSB_FIRST).
+    // Set the FIFO trigger level. Trigger levels are specified in characters
+    // from 4 to 60 in steps of 4, while the TLR stores N/4.
     Adafruit_BusIO_Register     TLR(_owner->i2c_dev, _owner->spi_dev,
                                     SC16IS7XX_SPIREG,
                                     (SC16IS7XX_REG_TLR << 3 | _channel << 1));
     Adafruit_BusIO_RegisterBits length_bits(&TLR, 4, rx ? 4 : 0);
-    length_bits.write(length);
+    if (length < 4) {
+#if defined(SC16IS7XX_DEBUG_SERIAL)
+        SC16IS7XX_DEBUG_SERIAL.println(
+            "FIFO trigger length out of range; clamping to 4");
+#endif  // SC16IS7XX_DEBUG_SERIAL
+        length = 4;
+    } else if (length > 60) {
+#if defined(SC16IS7XX_DEBUG_SERIAL)
+        SC16IS7XX_DEBUG_SERIAL.println(
+            "FIFO trigger length out of range; clamping to 60");
+#endif  // SC16IS7XX_DEBUG_SERIAL
+        length = 60;
+    }
+    length_bits.write(length / 4);
 
     // reset the enable bit for enhanced functions back to '0' to prevent
     // unintended consequences of leaving it enabled
