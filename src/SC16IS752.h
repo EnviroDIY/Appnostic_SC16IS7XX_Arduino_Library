@@ -68,7 +68,7 @@ enum class SC16IS7XXSerialConfig : uint8_t {
 /**
  * @brief SC16IS752 dual-channel UART driver.
  */
-class SC16IS752 : public SC16IS7XX, public Stream {
+class SC16IS7XX::SC16IS752 : public SC16IS7XX, public Stream {
  private:
     uint8_t _channel;
     bool    _peek_flag = 0;  ///< Flag to indicate if there's a peeked byte
@@ -157,5 +157,7 @@ class SC16IS752 : public SC16IS7XX, public Stream {
     size_t write(const char* str);
     void   flush();
 };
+
+using SC16IS752 = SC16IS7XX::SC16IS752;
 
 #endif  // _SC16IS752_H_

@@ -400,6 +400,8 @@ class SC16IS7XX {
     bool gpioInterruptsLatched = false;
 
  public:
+    class SC16IS752;
+
     /**
      * @brief Construct a new SC16IS7XX object.
      */
