@@ -491,8 +491,8 @@ class SC16IS7xx {
     void end();
 
     // configuration
-    void     setGPIOPullDirection(bool pullUp);
-    bool     getGPIOPullDirection();
+    void setGPIOPullDirection(bool pullUp);
+    bool getGPIOPullDirection();
 
     // gpio - need a uniquely named function for each of the digital read/write
     // and pin mode functions to not conflict with defines in some of the cores

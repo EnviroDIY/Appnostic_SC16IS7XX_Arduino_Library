@@ -146,7 +146,7 @@ void SC16IS7xx_UART::setBaudrate(uint32_t baudRate) {
         // if the divisor is too large, set the prescaler to divide the clock by
         // 4 and recalculate the divisor
         prescaler = 4;
-        divisor = (getCrystalFrequency() / prescaler) / (baudRate * 16);
+        divisor   = (getCrystalFrequency() / prescaler) / (baudRate * 16);
     }
 
     // the prescaler is considered to be an enhanced function, so we need to set
@@ -198,7 +198,8 @@ void SC16IS7xx_UART::setBaudrate(uint32_t baudRate) {
 
 
 #if defined(SC16IS7XX_DEBUG_SERIAL)
-    float actual_baudrate = (getCrystalFrequency() / prescaler) / (16 * divisor);
+    float actual_baudrate = (getCrystalFrequency() / prescaler) /
+        (16 * divisor);
     float error = (actual_baudrate - baudRate) * 100 / baudRate;
     SC16IS7XX_DEBUG_SERIAL.print("Desired baudrate: ");
     SC16IS7XX_DEBUG_SERIAL.println(baudRate, DEC);

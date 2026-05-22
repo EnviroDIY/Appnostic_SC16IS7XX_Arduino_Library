@@ -648,18 +648,21 @@ void SC16IS7xx::printInterruptSource(uint16_t callbackMask) {
                     break;
                 }
             }
+            break;
         }
 
         case SC16IS7XX_IIR_CTSRTS: {
-            switch (callbackMask)
-            case SC16IS7XX_INT_MASK_CTS: {
-                SC16IS7XX_DEBUG_SERIAL.println("Clear to Send Interrupt");
-                break;
+            switch (callbackMask) {
+                case SC16IS7XX_INT_MASK_CTS: {
+                    SC16IS7XX_DEBUG_SERIAL.println("Clear to Send Interrupt");
+                    break;
+                }
+                case SC16IS7XX_INT_MASK_RTS: {
+                    SC16IS7XX_DEBUG_SERIAL.println("Ready to Send Interrupt");
+                    break;
+                }
             }
-            case SC16IS7XX_INT_MASK_RTS: {
-                SC16IS7XX_DEBUG_SERIAL.println("Ready to Send Interrupt");
-                break;
-            }
+            break;
         }
 
         case SC16IS7XX_IIR_XOFF: {
