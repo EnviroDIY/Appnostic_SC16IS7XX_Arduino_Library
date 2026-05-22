@@ -357,9 +357,10 @@ void SC16IS7xx_UART::enableFlowControl(bool enabled) {
     Adafruit_BusIO_Register IOControl(_owner->i2c_dev, _owner->spi_dev,
                                       SC16IS7XX_SPIREG,
                                       SC16IS7XX_REG_IOCONTROL << 3);
-    //   pins 0-3 are controlled by bit 2, pins 4-7 are controlled by bit 1
+    //   pins 0-3 apply to UART B and are controlled by bit 2, pins 4-7 apply to
+    //   UART A and are controlled by bit 1
     Adafruit_BusIO_RegisterBits modem_pin_bit(&IOControl, 1,
-                                              _channel > 0 ? 1 : 2);
+                                              _channel > 0 ? 2 : 1);
     modem_pin_bit.write(enabled ? 1 : 0);
 }
 
