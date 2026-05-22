@@ -1087,8 +1087,17 @@ void SC16IS7xx_UART::flush() {
                                     SC16IS7XX_SPIREG,
                                     (SC16IS7XX_REG_LSR << 3 | _channel << 1));
     Adafruit_BusIO_RegisterBits thr_empty_bit(&LSR, 1, 7);
+    uint32_t                    stallStart = 0;
     while (!thr_empty_bit.read()) {
-        // do nothing, just wait
+        if (stallStart == 0) { stallStart = millis(); }
+        if ((millis() - stallStart) >= _timeout) {
+#if defined(SC16IS7XX_DEBUG_SERIAL)
+            SC16IS7XX_DEBUG_SERIAL.println(
+                "flush() timed out waiting for TX shift register to empty");
+#endif  // SC16IS7XX_DEBUG_SERIAL
+            return;
+        }
+        yield();
     }
 }
 
