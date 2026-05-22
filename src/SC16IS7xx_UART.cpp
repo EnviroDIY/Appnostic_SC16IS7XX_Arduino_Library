@@ -986,7 +986,8 @@ int SC16IS7xx_UART::rawRead(uint8_t* buf, size_t size) {
     Adafruit_BusIO_Register RHR(_owner->i2c_dev, _owner->spi_dev,
                                 SC16IS7XX_SPIREG,
                                 (SC16IS7XX_REG_RHR << 3 | _channel << 1));
-    return RHR.read(buf, toRead);
+    bool ok = RHR.read(buf, static_cast<uint8_t>(toRead));
+    return ok ? static_cast<int>(toRead) : -1;
 }
 
 /**

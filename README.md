@@ -43,9 +43,13 @@ Typical setup flow:
 
 - The default crystal frequency is 14.7456 MHz (14745600 Hz).
   - If a different crystal is used, call `setCrystalFrequency(frequency)` on each SC16IS7xx_UART object before `setBaudrate`, or define `SC16IS7XX_DEFAULT_XTAL_FREQ=xx` with a build flag so the divisor is calculated correctly.
-- The default I2C address is 0x4D (8-bit address of 0x90).
-  - This is the address for a chip with both A0 and A1 pulled HIGH.
+- The default I2C address is 0x48 (8-bit address of 0x90).
+  - This default applies when A0 and A1 are both pulled HIGH.
   - If a different address configuration is needed, set it in `begin_i2c(addr, Wire)` or define `SC16IS7XX_DEFAULT_ADDRESS=xx` with a build flag.
+
+> [!NOTE]
+> For the EnviroDIY Mayfly v2.0.0 the correct crystal frequency and I2C address are already defined in the variants files.
+> You do not need to define anything or call any functions to correct the frequency or address.
 
 ## Library Credits and Provenance
 
