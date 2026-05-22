@@ -2,9 +2,8 @@
 
 These example programs demonstrate how to use the EnviroDIY SC16IS7XX Arduino library.
 
-The current sketches instantiate `SC16IS752` explicitly. If your hardware is a
-different family member, change the chip object type to `SC16IS740`,
-`SC16IS750`, `SC16IS760`, or `SC16IS762` as appropriate.
+The current sketches instantiate `SC16IS752` explicitly.
+If your hardware is a different family member, change the chip object type to `SC16IS740`, `SC16IS750`, `SC16IS760`, or `SC16IS762` as appropriate.
 
 ___
 

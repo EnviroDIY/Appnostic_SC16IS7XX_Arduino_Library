@@ -2,8 +2,8 @@
 
 This example runs an I2C-configured SC16IS7XX UART loopback test for transmit and receive.
 
-The sketch currently instantiates `SC16IS752`. Change that type to
-`SC16IS740`, `SC16IS750`, `SC16IS760`, or `SC16IS762` for those chips.
+The sketch currently instantiates `SC16IS752`.
+Change that type to `SC16IS740`, `SC16IS750`, `SC16IS760`, or `SC16IS762` for those chips.
 
 _______
 
