@@ -12,6 +12,18 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+### Added
+
+### Removed
+
+### Fixed
+
+***
+
+## [2.0.0]
+
+### Changed
+
 - Refactored register and stream I/O to use Adafruit BusIO abstractions across the library.
 - Reworked class architecture around a dedicated `SC16IS7xx_UART` channel class with chip wrappers/traits for multiple SC16IS7xx variants.
 - Updated public chip typing from a single concrete focus to trait-driven concrete aliases (`SC16IS740`, `SC16IS750`, `SC16IS760`, `SC16IS752`, `SC16IS762`).
@@ -52,12 +64,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 1.0.0
 
-Initial fork from Appnostic
+Initial fork from Appnostic, see origin for release
 
 ***
 
 [Unreleased]: https://github.com/EnviroDIY/SC16IS7XX/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/EnviroDIY/SC16IS7XX/releases/tag/v1.0.0
+[2.0.0]: https://github.com/EnviroDIY/SC16IS7XX/releases/tag/v2.0.0
 
 <!--! @tableofcontents{HTML:1} -->
 
