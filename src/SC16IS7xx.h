@@ -587,6 +587,13 @@ using SC16IS762Traits =
 template <typename Traits>
 class SC16IS7xxChip : public SC16IS7xx {
  public:
+    /**
+     * @brief Construct a chip wrapper using compile-time trait values.
+     *
+     * This constructor takes no runtime parameters. The UART channel count and
+     * GPIO pin count are taken from @p Traits and forwarded to the
+     * SC16IS7xx base class constructor.
+     */
     SC16IS7xxChip() : SC16IS7xx(Traits::UART_CHANNELS, Traits::GPIO_PINS) {}
 };
 
