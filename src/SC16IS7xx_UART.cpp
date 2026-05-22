@@ -133,6 +133,8 @@ void SC16IS7xx_UART::setFIFOTriggerLevel(bool rx, uint8_t length) {
  * Divisor)
  */
 void SC16IS7xx_UART::setBaudrate(uint32_t baudRate) {
+    if (baudRate == 0) { return; }  // Guard against division by zero
+
     uint32_t divisor;
     uint8_t  prescaler;
 
