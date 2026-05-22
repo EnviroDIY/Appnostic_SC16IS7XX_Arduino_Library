@@ -21,7 +21,13 @@
 #include <Adafruit_BusIO_Register.h>
 #include <Adafruit_I2CDevice.h>
 #include <Adafruit_SPIDevice.h>
+
+#if __has_include(<new>)
 #include <new>
+#else
+void* operator new(size_t, void* ptr) noexcept;
+void  operator delete(void*, void*) noexcept;
+#endif
 
 /**
  * @def ISR_MEM_ACCESS
@@ -394,8 +400,8 @@ class SC16IS7xx {
 
     alignas(SC16IS7xx_UART) uint8_t
         _uartStorage[SC16IS7XX_MAX_UART_CHANNELS][sizeof(SC16IS7xx_UART)];
-    SC16IS7xx_UART*
-        uartChannels[SC16IS7XX_MAX_UART_CHANNELS] = {nullptr, nullptr};
+    SC16IS7xx_UART* uartChannels[SC16IS7XX_MAX_UART_CHANNELS] = {nullptr,
+                                                                 nullptr};
 
     uint8_t _uartChannelCount;
     uint8_t _gpioPinCount;
@@ -405,13 +411,13 @@ class SC16IS7xx {
     voidFxnPtr
         ISRcallback[SC16IS7XX_MAX_GPIO_PINS + SC16IS7XX_NON_GPIO_INTERRUPTS];
     uint16_t ISRlist[SC16IS7XX_MAX_GPIO_PINS + SC16IS7XX_NON_GPIO_INTERRUPTS];
-    uint8_t    nints;  // Stores total number of attached interrupts
+    volatile uint8_t nints;  // Stores total number of attached interrupts
 
  protected:
     Adafruit_I2CDevice* i2c_dev = nullptr;  ///< Pointer to I2C bus interface
     Adafruit_SPIDevice* spi_dev = nullptr;  ///< Pointer to SPI bus interface
 
-     SC16IS7xx(uint8_t uartChannelCount, uint8_t gpioPinCount);
+    SC16IS7xx(uint8_t uartChannelCount, uint8_t gpioPinCount);
 
     virtual void resetDevice();
     virtual bool ping();
@@ -561,37 +567,66 @@ class SC16IS7xx {
     static void interruptHandler(void);
 };
 
+/**
+ * @brief Compile-time traits describing one SC16IS7xx-family chip variant.
+ *
+ * @tparam UartChannels Number of UART channels provided by the chip.
+ * @tparam GpioPins Number of GPIO pins provided by the chip.
+ */
 template <uint8_t UartChannels, uint8_t GpioPins>
 struct SC16IS7xxChipTraits {
     static constexpr uint8_t UART_CHANNELS = UartChannels;
     static constexpr uint8_t GPIO_PINS     = GpioPins;
 };
 
+/// @brief Traits for the SC16IS740 chip variant.
 using SC16IS740Traits =
     SC16IS7xxChipTraits<SC16IS740_UART_CHANNELS, SC16IS740_GPIO_PINS>;
+/// @brief Traits for the SC16IS750 chip variant.
 using SC16IS750Traits =
     SC16IS7xxChipTraits<SC16IS750_UART_CHANNELS, SC16IS750_GPIO_PINS>;
+/// @brief Traits for the SC16IS760 chip variant.
 using SC16IS760Traits =
     SC16IS7xxChipTraits<SC16IS760_UART_CHANNELS, SC16IS760_GPIO_PINS>;
+/// @brief Traits for the SC16IS752 chip variant.
 using SC16IS752Traits =
     SC16IS7xxChipTraits<SC16IS752_UART_CHANNELS, SC16IS752_GPIO_PINS>;
+/// @brief Traits for the SC16IS762 chip variant.
 using SC16IS762Traits =
     SC16IS7xxChipTraits<SC16IS762_UART_CHANNELS, SC16IS762_GPIO_PINS>;
 
+/**
+ * @brief Convenience wrapper that binds SC16IS7xx to a trait set.
+ *
+ * @tparam Traits A SC16IS7xxChipTraits specialization describing the chip
+ * variant.
+ */
 template <typename Traits>
 class SC16IS7xxChip : public SC16IS7xx {
  public:
-    SC16IS7xxChip()
-        : SC16IS7xx(Traits::UART_CHANNELS, Traits::GPIO_PINS) {}
+    SC16IS7xxChip() : SC16IS7xx(Traits::UART_CHANNELS, Traits::GPIO_PINS) {}
 };
 
+/**
+ * @brief Convenience alias template for selecting a chip wrapper by traits.
+ *
+ * This is useful when you want to name the chip type at compile time without
+ * spelling out SC16IS7xxChip<Traits> at the call site.
+ *
+ * @tparam Traits A SC16IS7xxChipTraits specialization.
+ */
 template <typename Traits>
 using SC16IS7xxT = SC16IS7xxChip<Traits>;
 
+/// @brief Concrete chip type for the SC16IS740.
 using SC16IS740 = SC16IS7xxChip<SC16IS740Traits>;
+/// @brief Concrete chip type for the SC16IS750.
 using SC16IS750 = SC16IS7xxChip<SC16IS750Traits>;
+/// @brief Concrete chip type for the SC16IS760.
 using SC16IS760 = SC16IS7xxChip<SC16IS760Traits>;
+/// @brief Concrete chip type for the SC16IS752.
 using SC16IS752 = SC16IS7xxChip<SC16IS752Traits>;
+/// @brief Concrete chip type for the SC16IS762.
 using SC16IS762 = SC16IS7xxChip<SC16IS762Traits>;
 
 #endif  // _SC16IS7XX_H_

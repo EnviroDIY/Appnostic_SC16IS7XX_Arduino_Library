@@ -9,16 +9,14 @@
  */
 
 #include "SC16IS7xx.h"
-#include <new>
 
 // Pointer to active SC16IS7xx object
 SC16IS7xx* SC16IS7xx::_activeObject = nullptr;
 
 SC16IS7xx::SC16IS7xx(uint8_t uartChannelCount, uint8_t gpioPinCount)
-    : _uartChannelCount(
-          uartChannelCount > SC16IS7XX_MAX_UART_CHANNELS
-              ? SC16IS7XX_MAX_UART_CHANNELS
-              : uartChannelCount),
+    : _uartChannelCount(uartChannelCount > SC16IS7XX_MAX_UART_CHANNELS
+                            ? SC16IS7XX_MAX_UART_CHANNELS
+                            : uartChannelCount),
       _gpioPinCount(gpioPinCount > SC16IS7XX_MAX_GPIO_PINS
                         ? SC16IS7XX_MAX_GPIO_PINS
                         : gpioPinCount),
@@ -135,6 +133,7 @@ bool SC16IS7xx::begin_i2c(uint8_t addr, TwoWire* theWire) {
     if (_activeObject != this) { _activeObject = this; }
 
     if (i2c_dev) delete i2c_dev;
+    i2c_dev = nullptr;
     if (spi_dev) delete spi_dev;
     spi_dev = nullptr;
 
@@ -621,12 +620,18 @@ void SC16IS7xx::detachPinInterrupt(uint8_t pin) {
     // disable pin interrupt for the pin
     setPinInterrupt(pin, false);
 
-    // mask for the position of the interrupt in the our list of callbacks
+    // Clear both possible callback masks: the per-pin latched form and the
+    // global non-latched form.
     uint16_t pinMask      = 1 << pin;
     uint16_t callbackMask = SC16IS7XX_IIR_GPIO << 8 | pinMask;
+    uint16_t globalMask   = SC16IS7XX_IIR_GPIO << 8;
 
     // clear the callback for the interrupt
-    clearCallback(callbackMask);
+    if (gpioInterruptsLatched) {
+        clearCallback(callbackMask);
+    } else {
+        clearCallback(globalMask);
+    }
 }
 
 
