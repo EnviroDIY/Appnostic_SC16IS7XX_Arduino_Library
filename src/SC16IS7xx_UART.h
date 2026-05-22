@@ -11,7 +11,7 @@
 #ifndef _SC16IS7XX_UART_H_
 #define _SC16IS7XX_UART_H_
 
-#if ARDUINO >= 100
+#if defined(ARDUINO) && ARDUINO >= 100
 #include "Arduino.h"
 #else  // if ARDUINO >= 100
 #include "WProgram.h"
@@ -96,16 +96,6 @@ class SC16IS7xx_UART : public Stream {
     void configure(SC16IS7xx* owner, uint8_t channel);
 
  public:
-
-    /**
-     * @brief Set the SC16IS7xx object that owns this UART channel
-     *
-     * @param owner Pointer to the SC16IS7xx object that owns this UART channel
-     */
-    void setOwner(SC16IS7xx* owner) {
-        _owner = owner;
-    }
-
     // uart configuration
     void     setCrystalFrequency(uint32_t frequency);
     uint32_t getCrystalFrequency() const;

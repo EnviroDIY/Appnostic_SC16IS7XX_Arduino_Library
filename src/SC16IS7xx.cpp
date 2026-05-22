@@ -143,10 +143,6 @@ bool SC16IS7xx::begin_i2c(uint8_t addr, TwoWire* theWire) {
         return false;
     }
 
-    // set this as the active object for interrupt handling before we initialize
-    // the I2C
-    if (_activeObject != this) { _activeObject = this; }
-
     if (i2c_dev) delete i2c_dev;
     i2c_dev = nullptr;
     if (spi_dev) delete spi_dev;
@@ -157,7 +153,11 @@ bool SC16IS7xx::begin_i2c(uint8_t addr, TwoWire* theWire) {
     // verify i2c address was found
     if (!i2c_dev->begin()) { return false; }
 
-    return _init();
+    if (!_init()) { return false; }
+
+    if (_activeObject != this) { _activeObject = this; }
+
+    return true;
 }
 
 
@@ -172,10 +172,6 @@ bool SC16IS7xx::begin_i2c(uint8_t addr, TwoWire* theWire) {
  */
 bool SC16IS7xx::begin_SPI(uint8_t cs_pin, SPIClass* theSPI,
                           uint32_t frequency) {
-    // set this as the active object for interrupt handling before we initialize
-    // the SPI
-    if (_activeObject != this) { _activeObject = this; }
-
     if (i2c_dev) delete i2c_dev;
     if (spi_dev) delete spi_dev;
     i2c_dev = nullptr;
@@ -188,7 +184,11 @@ bool SC16IS7xx::begin_SPI(uint8_t cs_pin, SPIClass* theSPI,
 
     if (!spi_dev->begin()) { return false; }
 
-    return _init();
+    if (!_init()) { return false; }
+
+    if (_activeObject != this) { _activeObject = this; }
+
+    return true;
 }
 
 /**
@@ -202,10 +202,6 @@ bool SC16IS7xx::begin_SPI(uint8_t cs_pin, SPIClass* theSPI,
  */
 bool SC16IS7xx::begin_SPI(int8_t cs_pin, int8_t sck_pin, int8_t miso_pin,
                           int8_t mosi_pin, uint32_t frequency) {
-    // set this as the active object for interrupt handling before we initialize
-    // the SPI
-    if (_activeObject != this) { _activeObject = this; }
-
     if (i2c_dev) delete i2c_dev;
     if (spi_dev) delete spi_dev;
     i2c_dev = nullptr;
@@ -217,7 +213,11 @@ bool SC16IS7xx::begin_SPI(int8_t cs_pin, int8_t sck_pin, int8_t miso_pin,
 
     if (!spi_dev->begin()) { return false; }
 
-    return _init();
+    if (!_init()) { return false; }
+
+    if (_activeObject != this) { _activeObject = this; }
+
+    return true;
 }
 
 /**
@@ -375,12 +375,15 @@ void SC16IS7xx::setPinInterrupt(uint8_t pin, bool enabled) {
         return;
     }
 
-    // Ensure that the pin is set to be an I/O pin and not a modem pin
-    Adafruit_BusIO_Register IOControl(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
-                                      SC16IS7XX_REG_IOCONTROL << 3);
-    //   pins 0-3 are controlled by bit 2, pins 4-7 are controlled by bit 1
-    Adafruit_BusIO_RegisterBits modem_pin_bit(&IOControl, 1, pin > 3 ? 1 : 2);
-    modem_pin_bit.write(0);
+    if (enabled) {
+        // Ensure that the pin is set to be an I/O pin and not a modem pin
+        Adafruit_BusIO_Register IOControl(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+                                          SC16IS7XX_REG_IOCONTROL << 3);
+        //   pins 0-3 are controlled by bit 2, pins 4-7 are controlled by bit 1
+        Adafruit_BusIO_RegisterBits modem_pin_bit(&IOControl, 1,
+                                                  pin > 3 ? 1 : 2);
+        modem_pin_bit.write(0);
+    }
 
     // Now enable or disable the interrupt for the specific pin
     Adafruit_BusIO_Register     IOIntEna(i2c_dev, spi_dev, SC16IS7XX_SPIREG,

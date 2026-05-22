@@ -12,7 +12,7 @@
 #ifndef _SC16IS7XX_H_
 #define _SC16IS7XX_H_
 
-#if ARDUINO >= 100
+#if defined(ARDUINO) && ARDUINO >= 100
 #include "Arduino.h"
 #else  // if ARDUINO >= 100
 #include "WProgram.h"
@@ -410,6 +410,10 @@ class SC16IS7xx {
     Adafruit_SPIDevice* spi_dev = nullptr;  ///< Pointer to SPI bus interface
 
     SC16IS7xx(uint8_t uartChannelCount, uint8_t gpioPinCount);
+    SC16IS7xx(const SC16IS7xx&)            = delete;
+    SC16IS7xx& operator=(const SC16IS7xx&) = delete;
+    SC16IS7xx(SC16IS7xx&&)                 = delete;
+    SC16IS7xx& operator=(SC16IS7xx&&)      = delete;
 
     virtual void resetDevice();
     virtual bool ping();

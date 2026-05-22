@@ -2,7 +2,7 @@
 
 This is a library for the SC16IS740, SC16IS750, SC16IS760, SC16IS752 and SC16IS762 series of UART interfaces by NXP.
 
-All 5 chips are I2C-bus/SPI bus interfaces to a single or dual-channel high performance UART offering data rates up to 5 Mbit/s, low operating and sleeping current.
+All 5 chips are I2C-bus/SPI bus interfaces to a single or dual-channel high-performance UART offering data rates up to 5 Mbit/s, low operating and sleeping current.
 All chips except the SC16IS740 also provide 8 additional programmable I/O pins.
 
 The SC16IS740/750/760’s internal register set is backward-compatible with the widely used and widely popular 16C450.
@@ -41,8 +41,11 @@ Typical setup flow:
 3. Acquire UART channel objects with uartA() and, for dual-UART chips, uartB().
 4. Configure each UART channel (for example enableFIFO, setBaudrate, setLine).
 
-- The default crystal frequency is 14.7456 MHz (14745600 Hz). If a different crystal is used, call `setCrystalFrequency(frequency)` on each SC16IS7xx_UART object before `setBaudrate`, or define `SC16IS7XX_DEFAULT_XTAL_FREQ=xx` with a build flag so the divisor is calculated correctly.
-- The default I2C address is 0x4D (8-bit address of 0x90). That is the address for a chip with both A0 and A1 pulled HIGH. If a different address configuration is needed, set it in `begin_i2c(addr, Wire)` or define `SC16IS7XX_DEFAULT_ADDRESS=xx` with a build flag.
+- The default crystal frequency is 14.7456 MHz (14745600 Hz).
+  - If a different crystal is used, call `setCrystalFrequency(frequency)` on each SC16IS7xx_UART object before `setBaudrate`, or define `SC16IS7XX_DEFAULT_XTAL_FREQ=xx` with a build flag so the divisor is calculated correctly.
+- The default I2C address is 0x4D (8-bit address of 0x90).
+  - This is the address for a chip with both A0 and A1 pulled HIGH.
+  - If a different address configuration is needed, set it in `begin_i2c(addr, Wire)` or define `SC16IS7XX_DEFAULT_ADDRESS=xx` with a build flag.
 
 ## Library Credits and Provenance
 

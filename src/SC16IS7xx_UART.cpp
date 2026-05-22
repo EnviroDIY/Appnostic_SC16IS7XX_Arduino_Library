@@ -161,14 +161,6 @@ void SC16IS7xx_UART::setBaudrate(uint32_t baudRate) {
     uint32_t divisor;
     uint8_t  prescaler;
 
-    // check if the device has sleep mode enabled.
-    // the divisor cannot be changed while sleep mode is enabled, so we need to
-    // check the current state before attempting to change the baud rate and if
-    // sleep mode is enabled, we need to temporarily disable it to change the
-    // baud rate and then re-enable it if it was previously enabled.
-    bool sleep_enabled = _owner->isSleepEnabled();
-    if (sleep_enabled) { _owner->enableSleepMode(false); }
-
     // The maximum divisor is 0xFFFF, so if the calculated divisor is greater
     // than that, we need to use a prescaler to divide the input clock to the
     // baud rate generator and then calculate the divisor based on the divided
@@ -179,12 +171,36 @@ void SC16IS7xx_UART::setBaudrate(uint32_t baudRate) {
     prescaler = 1;
     divisor   = (getCrystalFrequency() / prescaler) / (baudRate * 16);
 
+    if (divisor == 0) {
+#if defined(SC16IS7XX_DEBUG_SERIAL)
+        SC16IS7XX_DEBUG_SERIAL.println(
+            "Baudrate too high for selected crystal/prescaler");
+#endif  // SC16IS7XX_DEBUG_SERIAL
+        return;
+    }
+
     if (divisor > 0xFFFF) {
         // if the divisor is too large, set the prescaler to divide the clock by
         // 4 and recalculate the divisor
         prescaler = 4;
         divisor   = (getCrystalFrequency() / prescaler) / (baudRate * 16);
+
+        if (divisor == 0 || divisor > 0xFFFF) {
+#if defined(SC16IS7XX_DEBUG_SERIAL)
+            SC16IS7XX_DEBUG_SERIAL.println(
+                "Baudrate out of range for selected crystal/prescaler");
+#endif  // SC16IS7XX_DEBUG_SERIAL
+            return;
+        }
     }
+
+    // check if the device has sleep mode enabled.
+    // the divisor cannot be changed while sleep mode is enabled, so we need to
+    // check the current state before attempting to change the baud rate and if
+    // sleep mode is enabled, we need to temporarily disable it to change the
+    // baud rate and then re-enable it if it was previously enabled.
+    bool sleep_enabled = _owner->isSleepEnabled();
+    if (sleep_enabled) { _owner->enableSleepMode(false); }
 
     // the prescaler is considered to be an enhanced function, so we need to set
     // EFR[4] to '1' to be able to write to and use trigger level interrupts.
@@ -957,15 +973,20 @@ int SC16IS7xx_UART::rawRead() {
 }
 
 int SC16IS7xx_UART::rawRead(uint8_t* buf, size_t size) {
+    if (size == 0) { return 0; }
+
     // We need to check if anything is in the buffer before trying to read,
     // otherwise the SC16IS7xx will return whatever stale data is in the RHR
     // register from the last time it was read, even if that data has already
     // been read from the FIFO.
-    if (FIFOAvailableData() == 0) { return -1; }
+    uint8_t available = FIFOAvailableData();
+    if (available == 0) { return -1; }
+    size_t toRead = size;
+    if (toRead > available) { toRead = available; }
     Adafruit_BusIO_Register RHR(_owner->i2c_dev, _owner->spi_dev,
                                 SC16IS7XX_SPIREG,
                                 (SC16IS7XX_REG_RHR << 3 | _channel << 1));
-    return RHR.read(buf, size);
+    return RHR.read(buf, toRead);
 }
 
 /**
@@ -996,6 +1017,8 @@ int SC16IS7xx_UART::read() {
  * @return The number of bytes read, or -1 if no data is available.
  */
 int SC16IS7xx_UART::read(uint8_t* buf, size_t size) {
+    if (size == 0) { return 0; }
+
     // if there's a peeked byte, place that in the first position of the buffer
     // and read the rest from the FIFO
     if (_peek_flag) {
@@ -1005,7 +1028,8 @@ int SC16IS7xx_UART::read(uint8_t* buf, size_t size) {
 #endif  // SC16IS7XX_DEBUG_SERIAL
         _peek_flag          = 0;
         *buf                = _peek_buf;
-        int additionalBytes = rawRead(buf + 1, size - 1);
+        int additionalBytes = 0;
+        if (size > 1) { additionalBytes = rawRead(buf + 1, size - 1); }
         return 1 + (additionalBytes > 0 ? additionalBytes : 0);
     }
     // otherwise, read from the FIFO as normal
