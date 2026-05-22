@@ -1,32 +1,75 @@
 /**
- * @file SC16IS752.cpp
+ * @file SC16IS7xx_UART.cpp
  * @copyright Stroud Water Research Center
  * Part of the EnviroDIY ModularSensors library for Arduino.
  * This library is published under the BSD-3 license.
  * @author Sara Geleskie Damiano <sdamiano@stroudcenter.org>
  *
- * @brief Implements the SC16IS752 class.
+ * @brief Implements the SC16IS7xx_UART class.
  */
 
-#include "SC16IS752.h"
+#include "SC16IS7xx.h"
 
 /**
- * @brief constructor for SC16IS752
- * @param channel
+ * @brief default constructor for SC16IS7xx_UART
  */
-SC16IS752::SC16IS752(uint8_t channel)
-    : _channel(channel),
+SC16IS7xx_UART::SC16IS7xx_UART()
+    : _owner(nullptr),
+      _channel(SC16IS7XX_CHANNEL_A),
+      _crystalFrequency(SC16IS7XX_DEFAULT_XTAL_FREQ),
       _peek_flag(0),
       _peek_buf(-1) {}
 
+/**
+ * @brief constructor for SC16IS7xx_UART
+ * @param owner Pointer to the SC16IS7xx object that owns this UART channel
+ * @param channel The UART channel number (0 for channel A, 1 for channel B)
+ */
+SC16IS7xx_UART::SC16IS7xx_UART(SC16IS7xx* owner, uint8_t channel)
+    : SC16IS7xx_UART() {
+    configure(owner, channel);
+}
+
+/**
+ * @brief Configure or reconfigure this UART channel binding.
+ *
+ * @param owner Pointer to the SC16IS7xx object that owns this UART
+ * channel.
+ * @param channel UART channel index.
+ */
+void SC16IS7xx_UART::configure(SC16IS7xx* owner, uint8_t channel) {
+    _owner            = owner;
+    _channel          = channel;
+    _crystalFrequency = SC16IS7XX_DEFAULT_XTAL_FREQ;
+    _peek_flag        = false;
+    _peek_buf         = -1;
+}
+
 /*** UART CONFIGURATION *****************************************/
+
+/**
+ * @brief sets the crystal frequency in hertz.
+ * @param frequency the frequency of the crystal in hertz
+ */
+void SC16IS7xx_UART::setCrystalFrequency(uint32_t frequency) {
+    _crystalFrequency = frequency;
+}
+
+/**
+ * @brief gets the crystal frequency in hertz.
+ * @return the frequency of the crystal in hertz
+ */
+uint32_t SC16IS7xx_UART::getCrystalFrequency() const {
+    return _crystalFrequency;
+}
 
 /**
  * @brief enables fifo buffer
  * @param enabled true to enable FIFO, false to disable
  */
-void SC16IS752::enableFIFO(bool enabled) {
-    Adafruit_BusIO_Register     FCR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+void SC16IS7xx_UART::enableFIFO(bool enabled) {
+    Adafruit_BusIO_Register     FCR(_owner->i2c_dev, _owner->spi_dev,
+                                    SC16IS7XX_SPIREG,
                                     (SC16IS7XX_REG_FCR << 3 | _channel << 1));
     Adafruit_BusIO_RegisterBits enable_bit(&FCR, 1, 0);
     enable_bit.write(enabled);
@@ -36,8 +79,9 @@ void SC16IS752::enableFIFO(bool enabled) {
  * @brief resets tx or rx fifo buffer
  * @param rx true to reset RX FIFO, false to reset TX FIFO
  */
-void SC16IS752::resetFIFO(bool rx) {
-    Adafruit_BusIO_Register FCR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+void SC16IS7xx_UART::resetFIFO(bool rx) {
+    Adafruit_BusIO_Register FCR(_owner->i2c_dev, _owner->spi_dev,
+                                SC16IS7XX_SPIREG,
                                 (SC16IS7XX_REG_FCR << 3 | _channel << 1));
     // reset bit for rx fifo is bit 1, for tx fifo is bit 2
     Adafruit_BusIO_RegisterBits reset_bit(&FCR, 1, rx ? 1 : 2);
@@ -49,38 +93,52 @@ void SC16IS752::resetFIFO(bool rx) {
  * @param rx True to set RX trigger threshold, false for TX.
  * @param length Trigger threshold value.
  */
-void SC16IS752::setFIFOTriggerLevel(bool rx, uint8_t length) {
+void SC16IS7xx_UART::setFIFOTriggerLevel(bool rx, uint8_t length) {
     // the TX FIFO, the TCR (Transmission Control Register), and the TLR
     // (Trigger Level Register) are considered to be enhanced functions, so we
     // need to set EFR[4] to '1' to be able to write to and use trigger level
     // interrupts.
-    Adafruit_BusIO_Register     EFR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+    Adafruit_BusIO_Register     EFR(_owner->i2c_dev, _owner->spi_dev,
+                                    SC16IS7XX_SPIREG,
                                     (SC16IS7XX_REG_EFR << 3 | _channel << 1));
     Adafruit_BusIO_RegisterBits enable_bit_e(&EFR, 1, 4);
     enable_bit_e.write(true);
 
     // Enable TCR and TLR registers by setting modem control register bit 2
     // (MCR[2]) to '1'
-    Adafruit_BusIO_Register     MCR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+    Adafruit_BusIO_Register     MCR(_owner->i2c_dev, _owner->spi_dev,
+                                    SC16IS7XX_SPIREG,
                                     (SC16IS7XX_REG_MCR << 3 | _channel << 1));
     Adafruit_BusIO_RegisterBits enable_bit(&MCR, 1, 2);
     enable_bit.write(true);
 
-    // set the length of the FIFO trigger level. The length bits for the RX FIFO
-    // trigger are in bits 7:4 and the length bits for the TX FIFO trigger are
-    // in bits 3:0 of the TLR (Trigger Level Register). The higher bit is the
-    // MSB (ie, MSB_FIRST).
-    Adafruit_BusIO_Register     TLR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+    // Set the FIFO trigger level. Trigger levels are specified in characters
+    // from 4 to 60 in steps of 4, while the TLR stores N/4.
+    Adafruit_BusIO_Register     TLR(_owner->i2c_dev, _owner->spi_dev,
+                                    SC16IS7XX_SPIREG,
                                     (SC16IS7XX_REG_TLR << 3 | _channel << 1));
     Adafruit_BusIO_RegisterBits length_bits(&TLR, 4, rx ? 4 : 0);
-    length_bits.write(length);
+    if (length < 4) {
+#if defined(SC16IS7XX_DEBUG_SERIAL)
+        SC16IS7XX_DEBUG_SERIAL.println(
+            "FIFO trigger length out of range; clamping to 4");
+#endif  // SC16IS7XX_DEBUG_SERIAL
+        length = 4;
+    } else if (length > 60) {
+#if defined(SC16IS7XX_DEBUG_SERIAL)
+        SC16IS7XX_DEBUG_SERIAL.println(
+            "FIFO trigger length out of range; clamping to 60");
+#endif  // SC16IS7XX_DEBUG_SERIAL
+        length = 60;
+    }
+    length_bits.write(length / 4);
 
     // reset the enable bit for enhanced functions back to '0' to prevent
     // unintended consequences of leaving it enabled
     enable_bit_e.write(false);
 
 #if 0
-    Adafruit_BusIO_Register FCR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+    Adafruit_BusIO_Register FCR(_owner->i2c_dev, _owner->spi_dev, SC16IS7XX_SPIREG,
                                 (SC16IS7XX_REG_FCR << 3 | _channel << 1));
     // length bits for rx fifo are in bits 7:6, for tx fifo are in bits 5:4
     // in both cases, the higher bit is the MSB (ie, MSB_FIRST)
@@ -97,17 +155,11 @@ void SC16IS752::setFIFOTriggerLevel(bool rx, uint8_t length) {
  * following formula: Baudrate = (Crystal Frequency / Prescaler) / (16 *
  * Divisor)
  */
-void SC16IS752::setBaudrate(uint32_t baudRate) {
+void SC16IS7xx_UART::setBaudrate(uint32_t baudRate) {
+    if (baudRate == 0) { return; }  // Guard against division by zero
+
     uint32_t divisor;
     uint8_t  prescaler;
-
-    // check if the device has sleep mode enabled.
-    // the divisor cannot be changed while sleep mode is enabled, so we need to
-    // check the current state before attempting to change the baud rate and if
-    // sleep mode is enabled, we need to temporarily disable it to change the
-    // baud rate and then re-enable it if it was previously enabled.
-    bool sleep_enabled = isSleepEnabled();
-    if (sleep_enabled) { enableSleepMode(false); }
 
     // The maximum divisor is 0xFFFF, so if the calculated divisor is greater
     // than that, we need to use a prescaler to divide the input clock to the
@@ -119,22 +171,48 @@ void SC16IS752::setBaudrate(uint32_t baudRate) {
     prescaler = 1;
     divisor   = (getCrystalFrequency() / prescaler) / (baudRate * 16);
 
+    if (divisor == 0) {
+#if defined(SC16IS7XX_DEBUG_SERIAL)
+        SC16IS7XX_DEBUG_SERIAL.println(
+            "Baudrate too high for selected crystal/prescaler");
+#endif  // SC16IS7XX_DEBUG_SERIAL
+        return;
+    }
+
     if (divisor > 0xFFFF) {
         // if the divisor is too large, set the prescaler to divide the clock by
         // 4 and recalculate the divisor
         prescaler = 4;
         divisor   = (getCrystalFrequency() / prescaler) / (baudRate * 16);
+
+        if (divisor == 0 || divisor > 0xFFFF) {
+#if defined(SC16IS7XX_DEBUG_SERIAL)
+            SC16IS7XX_DEBUG_SERIAL.println(
+                "Baudrate out of range for selected crystal/prescaler");
+#endif  // SC16IS7XX_DEBUG_SERIAL
+            return;
+        }
     }
+
+    // check if the device has sleep mode enabled.
+    // the divisor cannot be changed while sleep mode is enabled, so we need to
+    // check the current state before attempting to change the baud rate and if
+    // sleep mode is enabled, we need to temporarily disable it to change the
+    // baud rate and then re-enable it if it was previously enabled.
+    bool sleep_enabled = _owner->isSleepEnabled();
+    if (sleep_enabled) { _owner->enableSleepMode(false); }
 
     // the prescaler is considered to be an enhanced function, so we need to set
     // EFR[4] to '1' to be able to write to and use trigger level interrupts.
-    Adafruit_BusIO_Register     EFR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+    Adafruit_BusIO_Register     EFR(_owner->i2c_dev, _owner->spi_dev,
+                                    SC16IS7XX_SPIREG,
                                     (SC16IS7XX_REG_EFR << 3 | _channel << 1));
     Adafruit_BusIO_RegisterBits enable_bit_e(&EFR, 1, 4);
     enable_bit_e.write(true);
 
     // set the initial clock divisor (prescaler) value from the MCR[7] bit
-    Adafruit_BusIO_Register     MCR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+    Adafruit_BusIO_Register     MCR(_owner->i2c_dev, _owner->spi_dev,
+                                    SC16IS7XX_SPIREG,
                                     (SC16IS7XX_REG_MCR << 3 | _channel << 1));
     Adafruit_BusIO_RegisterBits prescaler_bit(&MCR, 1, 7);
     prescaler_bit.write(prescaler == 4 ? 1 : 0);
@@ -147,17 +225,20 @@ void SC16IS752::setBaudrate(uint32_t baudRate) {
     // The Special Register set (the two divisor registers) is accessible only
     // when LCR[7] = logic 1 and LCR is not 0xBF (0b10111111 - No break, forced
     // parity, 2 stop bits, 8 data bits)
-    Adafruit_BusIO_Register     LCR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+    Adafruit_BusIO_Register     LCR(_owner->i2c_dev, _owner->spi_dev,
+                                    SC16IS7XX_SPIREG,
                                     (SC16IS7XX_REG_LCR << 3 | _channel << 1));
     Adafruit_BusIO_RegisterBits latch_enable(&LCR, 1, 7);
     latch_enable.write(true);
 
     // write to DLL
-    Adafruit_BusIO_Register DLL(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+    Adafruit_BusIO_Register DLL(_owner->i2c_dev, _owner->spi_dev,
+                                SC16IS7XX_SPIREG,
                                 (SC16IS7XX_REG_DLL << 3 | _channel << 1));
     DLL.write((uint8_t)divisor);
     // write to DLH
-    Adafruit_BusIO_Register DLH(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+    Adafruit_BusIO_Register DLH(_owner->i2c_dev, _owner->spi_dev,
+                                SC16IS7XX_SPIREG,
                                 (SC16IS7XX_REG_DLH << 3 | _channel << 1));
     DLH.write((uint8_t)(divisor >> 8));
 
@@ -166,24 +247,24 @@ void SC16IS752::setBaudrate(uint32_t baudRate) {
     latch_enable.write(false);
 
     // re-enable sleep mode if it was previously enabled
-    if (sleep_enabled) { enableSleepMode(true); }
+    if (sleep_enabled) { _owner->enableSleepMode(true); }
 
 
-#if defined(SC16IS752_DEBUG_SERIAL)
+#if defined(SC16IS7XX_DEBUG_SERIAL)
     float actual_baudrate = (getCrystalFrequency() / prescaler) /
         (16 * divisor);
     float error = (actual_baudrate - baudRate) * 100 / baudRate;
-    SC16IS752_DEBUG_SERIAL.print("Desired baudrate: ");
-    SC16IS752_DEBUG_SERIAL.println(baudRate, DEC);
-    SC16IS752_DEBUG_SERIAL.print("Prescaler: ");
-    SC16IS752_DEBUG_SERIAL.println(prescaler, DEC);
-    SC16IS752_DEBUG_SERIAL.print("Calculated divisor: ");
-    SC16IS752_DEBUG_SERIAL.println(divisor, DEC);
-    SC16IS752_DEBUG_SERIAL.print("Actual baudrate: ");
-    SC16IS752_DEBUG_SERIAL.println(actual_baudrate, DEC);
-    SC16IS752_DEBUG_SERIAL.print("Baudrate error: ");
-    SC16IS752_DEBUG_SERIAL.println(error, DEC);
-#endif  // SC16IS752_DEBUG_SERIAL
+    SC16IS7XX_DEBUG_SERIAL.print("Desired baudrate: ");
+    SC16IS7XX_DEBUG_SERIAL.println(baudRate, DEC);
+    SC16IS7XX_DEBUG_SERIAL.print("Prescaler: ");
+    SC16IS7XX_DEBUG_SERIAL.println(prescaler, DEC);
+    SC16IS7XX_DEBUG_SERIAL.print("Calculated divisor: ");
+    SC16IS7XX_DEBUG_SERIAL.println(divisor, DEC);
+    SC16IS7XX_DEBUG_SERIAL.print("Actual baudrate: ");
+    SC16IS7XX_DEBUG_SERIAL.println(actual_baudrate, DEC);
+    SC16IS7XX_DEBUG_SERIAL.print("Baudrate error: ");
+    SC16IS7XX_DEBUG_SERIAL.println(error, DEC);
+#endif  // SC16IS7XX_DEBUG_SERIAL
 }
 
 /**
@@ -193,17 +274,19 @@ void SC16IS752::setBaudrate(uint32_t baudRate) {
  * force '0')
  * @param stopBits the number of stop bits (1 or 2)
  */
-void SC16IS752::setLine(uint8_t dataBits, uint8_t parity, uint8_t stopBits) {
-    Adafruit_BusIO_Register LCR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+void SC16IS7xx_UART::setLine(uint8_t dataBits, uint8_t parity,
+                             uint8_t stopBits) {
+    Adafruit_BusIO_Register LCR(_owner->i2c_dev, _owner->spi_dev,
+                                SC16IS7XX_SPIREG,
                                 (SC16IS7XX_REG_LCR << 3 | _channel << 1));
 
     uint8_t tmp_lcr = LCR.read();
     tmp_lcr &= 0xC0;  // Clear the lower six bit of LCR (LCR[0] to LCR[5]
 
-#if defined(SC16IS752_DEBUG_SERIAL)
-    SC16IS752_DEBUG_SERIAL.print("LCR Register:0x");
-    SC16IS752_DEBUG_SERIAL.println(tmp_lcr, DEC);
-#endif  // SC16IS752_DEBUG_SERIAL
+#if defined(SC16IS7XX_DEBUG_SERIAL)
+    SC16IS7XX_DEBUG_SERIAL.print("LCR Register:0x");
+    SC16IS7XX_DEBUG_SERIAL.println(tmp_lcr, HEX);
+#endif  // SC16IS7XX_DEBUG_SERIAL
 
     // data bit length
     // LCR[0:1]
@@ -262,7 +345,7 @@ void SC16IS752::setLine(uint8_t dataBits, uint8_t parity, uint8_t stopBits) {
  * @param config The typed configuration enum encoding the data bits, parity,
  * and stop bits.
  */
-void SC16IS752::setLine(SC16IS7XXSerialConfig config) {
+void SC16IS7xx_UART::setLine(SC16IS7xxSerialConfig config) {
     setLine(static_cast<uint8_t>(config));
 }
 
@@ -274,7 +357,7 @@ void SC16IS752::setLine(SC16IS7XXSerialConfig config) {
  * @param config the configuration value encoding the data bits, parity, and
  * stop bits
  */
-void SC16IS752::setLine(uint8_t config) {
+void SC16IS7xx_UART::setLine(uint8_t config) {
     uint8_t dataBits = 8;
     uint8_t parity   = 0;
     uint8_t stopBits = 1;
@@ -307,16 +390,18 @@ void SC16IS752::setLine(uint8_t config) {
  *
  * @param enabled true to enable hardware flow control, false to disable
  */
-void SC16IS752::enableFlowControl(bool enabled) {
+void SC16IS7xx_UART::enableFlowControl(bool enabled) {
     // set the pin controls to modem pins to enable hardware flow control and to
     // GPIO pins to disable hardware flow control.
     // For channel 0/A GPIO[7:4] emulate RIA, CDA, DTRA, DSRA
     // For channel 1/B GPIO[3:0] emulate RIB, CDB, DTRB, DSRB
-    Adafruit_BusIO_Register IOControl(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+    Adafruit_BusIO_Register IOControl(_owner->i2c_dev, _owner->spi_dev,
+                                      SC16IS7XX_SPIREG,
                                       SC16IS7XX_REG_IOCONTROL << 3);
-    //   pins 0-3 are controlled by bit 2, pins 4-7 are controlled by bit 1
+    //   pins 0-3 apply to UART B and are controlled by bit 2, pins 4-7 apply to
+    //   UART A and are controlled by bit 1
     Adafruit_BusIO_RegisterBits modem_pin_bit(&IOControl, 1,
-                                              _channel > 0 ? 1 : 2);
+                                              _channel > 0 ? 2 : 1);
     modem_pin_bit.write(enabled ? 1 : 0);
 }
 
@@ -334,12 +419,13 @@ void SC16IS752::enableFlowControl(bool enabled) {
  * are controlled by bit 2 of the IOControl register, while pins 4-7 apply to
  * channel 0/A and are controlled by bit 1.
  */
-void SC16IS752::enableModemInterrupt(bool enabled) {
+void SC16IS7xx_UART::enableModemInterrupt(bool enabled) {
     // Modem interrupts only work when flow control is enabled, so enable flow
     // control to enable modem interrupts.
     if (enabled) { enableFlowControl(true); }
-    Adafruit_BusIO_Register     IER(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
-                                    SC16IS7XX_REG_IER << 3);
+    Adafruit_BusIO_Register     IER(_owner->i2c_dev, _owner->spi_dev,
+                                    SC16IS7XX_SPIREG,
+                                    (SC16IS7XX_REG_IER << 3 | _channel << 1));
     Adafruit_BusIO_RegisterBits modem(&IER, 1, SC16IS7XX_IER_MODEM);
     modem.write(enabled);
 }
@@ -352,9 +438,10 @@ void SC16IS752::enableModemInterrupt(bool enabled) {
  * the CTS pin changes. The CTS interrupt is cleared by reading the IIR register
  * or by a change in the state of the CTS pin.
  */
-void SC16IS752::enableCTSInterrupt(bool enabled) {
-    Adafruit_BusIO_Register     IER(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
-                                    SC16IS7XX_REG_IER << 3);
+void SC16IS7xx_UART::enableCTSInterrupt(bool enabled) {
+    Adafruit_BusIO_Register     IER(_owner->i2c_dev, _owner->spi_dev,
+                                    SC16IS7XX_SPIREG,
+                                    (SC16IS7XX_REG_IER << 3 | _channel << 1));
     Adafruit_BusIO_RegisterBits cts(&IER, 1, SC16IS7XX_IER_CTS);
     cts.write(enabled);
 }
@@ -367,9 +454,10 @@ void SC16IS752::enableCTSInterrupt(bool enabled) {
  * the RTS pin changes. The RTS interrupt is cleared by reading the IIR register
  * or by a change in the state of the RTS pin.
  */
-void SC16IS752::enableRTSInterrupt(bool enabled) {
-    Adafruit_BusIO_Register     IER(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
-                                    SC16IS7XX_REG_IER << 3);
+void SC16IS7xx_UART::enableRTSInterrupt(bool enabled) {
+    Adafruit_BusIO_Register     IER(_owner->i2c_dev, _owner->spi_dev,
+                                    SC16IS7XX_SPIREG,
+                                    (SC16IS7XX_REG_IER << 3 | _channel << 1));
     Adafruit_BusIO_RegisterBits rts(&IER, 1, SC16IS7XX_IER_RTS);
     rts.write(enabled);
 }
@@ -382,9 +470,10 @@ void SC16IS752::enableRTSInterrupt(bool enabled) {
  * character is received on the serial input. The XOFF interrupt is cleared by
  * reading the IIR register or when an XON character is received.
  */
-void SC16IS752::enableXOFFInterrupt(bool enabled) {
-    Adafruit_BusIO_Register     IER(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
-                                    SC16IS7XX_REG_IER << 3);
+void SC16IS7xx_UART::enableXOFFInterrupt(bool enabled) {
+    Adafruit_BusIO_Register     IER(_owner->i2c_dev, _owner->spi_dev,
+                                    SC16IS7XX_SPIREG,
+                                    (SC16IS7XX_REG_IER << 3 | _channel << 1));
     Adafruit_BusIO_RegisterBits xoff(&IER, 1, SC16IS7XX_IER_XOFF);
     xoff.write(enabled);
 }
@@ -398,9 +487,10 @@ void SC16IS752::enableXOFFInterrupt(bool enabled) {
  * Break Interrupt (BI) errors occur in characters in the RX FIFO.  Cleared when
  * all characters with errors have be read from the Rx FIFO.
  */
-void SC16IS752::enableRLSInterrupt(bool enabled) {
-    Adafruit_BusIO_Register     IER(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
-                                    SC16IS7XX_REG_IER << 3);
+void SC16IS7xx_UART::enableRLSInterrupt(bool enabled) {
+    Adafruit_BusIO_Register     IER(_owner->i2c_dev, _owner->spi_dev,
+                                    SC16IS7XX_SPIREG,
+                                    (SC16IS7XX_REG_IER << 3 | _channel << 1));
     Adafruit_BusIO_RegisterBits rls(&IER, 1, SC16IS7XX_IER_RLS);
     rls.write(enabled);
 }
@@ -420,9 +510,10 @@ void SC16IS752::enableRLSInterrupt(bool enabled) {
  * The THR interrupt is cleared when enough data has been sent on the Tx line to
  * bring the number of bytes in the TX FIFO below the trigger level.
  */
-void SC16IS752::enableTHRInterrupt(bool enabled) {
-    Adafruit_BusIO_Register     IER(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
-                                    SC16IS7XX_REG_IER << 3);
+void SC16IS7xx_UART::enableTHRInterrupt(bool enabled) {
+    Adafruit_BusIO_Register     IER(_owner->i2c_dev, _owner->spi_dev,
+                                    SC16IS7XX_SPIREG,
+                                    (SC16IS7XX_REG_IER << 3 | _channel << 1));
     Adafruit_BusIO_RegisterBits thr(&IER, 1, SC16IS7XX_IER_THR);
     thr.write(enabled);
 }
@@ -441,9 +532,10 @@ void SC16IS752::enableTHRInterrupt(bool enabled) {
  * The RHR interrupt is cleared by reading the RX FIFO (that is, the RHR
  * register).
  */
-void SC16IS752::enableRHRInterrupt(bool enabled) {
-    Adafruit_BusIO_Register     IER(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
-                                    SC16IS7XX_REG_IER << 3);
+void SC16IS7xx_UART::enableRHRInterrupt(bool enabled) {
+    Adafruit_BusIO_Register     IER(_owner->i2c_dev, _owner->spi_dev,
+                                    SC16IS7XX_SPIREG,
+                                    (SC16IS7XX_REG_IER << 3 | _channel << 1));
     Adafruit_BusIO_RegisterBits rhr(&IER, 1, SC16IS7XX_IER_RHR);
     rhr.write(enabled);
 }
@@ -459,11 +551,11 @@ void SC16IS752::enableRHRInterrupt(bool enabled) {
  * @param callback The function to execute when the RI interrupt is triggered.
  * This function should take no parameters and return void.
  */
-void SC16IS752::attachRIInterrupt(voidFxnPtr callback) {
+void SC16IS7xx_UART::attachRIInterrupt(voidFxnPtr callback) {
     // enable the modem interrupt
     enableModemInterrupt(true);
     // store the callback
-    storeCallback(SC16IS7XX_INT_MASK_RI, callback);
+    _owner->storeCallback(SC16IS7XX_INT_MASK_RI, callback);
 }
 /**
  * @brief Disable the RI (Ring Indicator) interrupt callback.
@@ -471,12 +563,12 @@ void SC16IS752::attachRIInterrupt(voidFxnPtr callback) {
  * Clears the stored callback for the RI interrupt. The shared modem interrupt
  * remains enabled for any other modem interrupt sources still in use.
  */
-void SC16IS752::detachRIInterrupt() {
+void SC16IS7xx_UART::detachRIInterrupt() {
     // NOTE: We don't disable the modem interrupt here because the modem
     // interrupt may be shared by multiple sources and we don't want to disable
     // it if other sources are still in use.
     // clear the callback for the interrupt
-    clearCallback(SC16IS7XX_INT_MASK_RI);
+    _owner->clearCallback(SC16IS7XX_INT_MASK_RI);
 }
 
 // CD - carrier detect (aka Data Carrier Detect (DCD))
@@ -490,11 +582,11 @@ void SC16IS752::detachRIInterrupt() {
  * @param callback The function to execute when the CD interrupt is triggered.
  * This function should take no parameters and return void.
  */
-void SC16IS752::attachCDInterrupt(voidFxnPtr callback) {
+void SC16IS7xx_UART::attachCDInterrupt(voidFxnPtr callback) {
     // enable the modem interrupt
     enableModemInterrupt(true);
     // store the callback
-    storeCallback(SC16IS7XX_INT_MASK_CD, callback);
+    _owner->storeCallback(SC16IS7XX_INT_MASK_CD, callback);
 }
 /**
  * @brief Disable the CD (Carrier Detect) interrupt callback.
@@ -502,12 +594,12 @@ void SC16IS752::attachCDInterrupt(voidFxnPtr callback) {
  * Clears the stored callback for the CD interrupt. The shared modem interrupt
  * remains enabled for any other modem interrupt sources still in use.
  */
-void SC16IS752::detachCDInterrupt() {
+void SC16IS7xx_UART::detachCDInterrupt() {
     // NOTE: We don't disable the modem interrupt here because the modem
     // interrupt may be shared by multiple sources and we don't want to disable
     // it if other sources are still in use.
     // clear the callback for the interrupt
-    clearCallback(SC16IS7XX_INT_MASK_CD);
+    _owner->clearCallback(SC16IS7XX_INT_MASK_CD);
 }
 
 // DSR - data set ready
@@ -522,11 +614,11 @@ void SC16IS752::detachCDInterrupt() {
  * @param callback The function to execute when the DSR interrupt is triggered.
  * This function should take no parameters and return void.
  */
-void SC16IS752::attachDSRInterrupt(voidFxnPtr callback) {
+void SC16IS7xx_UART::attachDSRInterrupt(voidFxnPtr callback) {
     // enable the modem interrupt
     enableModemInterrupt(true);
     // store the callback
-    storeCallback(SC16IS7XX_INT_MASK_DSR, callback);
+    _owner->storeCallback(SC16IS7XX_INT_MASK_DSR, callback);
 }
 /**
  * @brief Disable the DSR (Data Set Ready) interrupt callback.
@@ -534,12 +626,12 @@ void SC16IS752::attachDSRInterrupt(voidFxnPtr callback) {
  * Clears the stored callback for the DSR interrupt. The shared modem interrupt
  * remains enabled for any other modem interrupt sources still in use.
  */
-void SC16IS752::detachDSRInterrupt() {
+void SC16IS7xx_UART::detachDSRInterrupt() {
     // NOTE: We don't disable the modem interrupt here because the modem
     // interrupt may be shared by multiple sources and we don't want to disable
     // it if other sources are still in use.
     // clear the callback for the interrupt
-    clearCallback(SC16IS7XX_INT_MASK_DSR);
+    _owner->clearCallback(SC16IS7XX_INT_MASK_DSR);
 }
 
 // DTR - data terminal ready
@@ -553,11 +645,11 @@ void SC16IS752::detachDSRInterrupt() {
  * @param callback The function to execute when the DTR interrupt is triggered.
  * This function should take no parameters and return void.
  */
-void SC16IS752::attachDTRInterrupt(voidFxnPtr callback) {
+void SC16IS7xx_UART::attachDTRInterrupt(voidFxnPtr callback) {
     // enable the modem interrupt
     enableModemInterrupt(true);
     // store the callback
-    storeCallback(SC16IS7XX_INT_MASK_DTR, callback);
+    _owner->storeCallback(SC16IS7XX_INT_MASK_DTR, callback);
 }
 /**
  * @brief Disable the DTR (Data Terminal Ready) interrupt callback.
@@ -565,12 +657,12 @@ void SC16IS752::attachDTRInterrupt(voidFxnPtr callback) {
  * Clears the stored callback for the DTR interrupt. The shared modem interrupt
  * remains enabled for any other modem interrupt sources still in use.
  */
-void SC16IS752::detachDTRInterrupt() {
+void SC16IS7xx_UART::detachDTRInterrupt() {
     // NOTE: We don't disable the modem interrupt here because the modem
     // interrupt may be shared by multiple sources and we don't want to disable
     // it if other sources are still in use.
     // clear the callback for the interrupt
-    clearCallback(SC16IS7XX_INT_MASK_DTR);
+    _owner->clearCallback(SC16IS7XX_INT_MASK_DTR);
 }
 
 /**
@@ -583,22 +675,22 @@ void SC16IS752::detachDTRInterrupt() {
  * @param callback The function to execute when the CTS interrupt is triggered.
  * This function should take no parameters and return void.
  */
-void SC16IS752::attachCTSInterrupt(voidFxnPtr callback) {
+void SC16IS7xx_UART::attachCTSInterrupt(voidFxnPtr callback) {
     // enable the CTS interrupt
     enableCTSInterrupt(true);
     // store the callback
-    storeCallback(SC16IS7XX_INT_MASK_CTS, callback);
+    _owner->storeCallback(SC16IS7XX_INT_MASK_CTS, callback);
 }
 /**
  * @brief Disable the CTS (Clear To Send) interrupt callback.
  *
  * Disables the CTS interrupt source and clears the stored callback.
  */
-void SC16IS752::detachCTSInterrupt() {
+void SC16IS7xx_UART::detachCTSInterrupt() {
     // disable the CTS interrupt
     enableCTSInterrupt(false);
     // clear the callback for the interrupt
-    clearCallback(SC16IS7XX_INT_MASK_CTS);
+    _owner->clearCallback(SC16IS7XX_INT_MASK_CTS);
 }
 
 /**
@@ -611,22 +703,22 @@ void SC16IS752::detachCTSInterrupt() {
  * @param callback The function to execute when the RTS interrupt is triggered.
  * This function should take no parameters and return void.
  */
-void SC16IS752::attachRTSInterrupt(voidFxnPtr callback) {
+void SC16IS7xx_UART::attachRTSInterrupt(voidFxnPtr callback) {
     // enable the RTS interrupt
     enableRTSInterrupt(true);
     // store the callback
-    storeCallback(SC16IS7XX_INT_MASK_RTS, callback);
+    _owner->storeCallback(SC16IS7XX_INT_MASK_RTS, callback);
 }
 /**
  * @brief Disable the RTS (Request To Send) interrupt callback.
  *
  * Disables the RTS interrupt source and clears the stored callback.
  */
-void SC16IS752::detachRTSInterrupt() {
+void SC16IS7xx_UART::detachRTSInterrupt() {
     // disable the RTS interrupt
     enableRTSInterrupt(false);
     // clear the callback for the interrupt
-    clearCallback(SC16IS7XX_INT_MASK_RTS);
+    _owner->clearCallback(SC16IS7XX_INT_MASK_RTS);
 }
 
 /**
@@ -639,22 +731,22 @@ void SC16IS752::detachRTSInterrupt() {
  * @param callback The function to execute when the XOFF interrupt is
  * triggered. This function should take no parameters and return void.
  */
-void SC16IS752::attachXOFFInterrupt(voidFxnPtr callback) {
+void SC16IS7xx_UART::attachXOFFInterrupt(voidFxnPtr callback) {
     // enable the XOFF interrupt
     enableXOFFInterrupt(true);
     // store the callback
-    storeCallback(SC16IS7XX_INT_MASK_XOFF, callback);
+    _owner->storeCallback(SC16IS7XX_INT_MASK_XOFF, callback);
 }
 /**
  * @brief Disable the XOFF interrupt callback.
  *
  * Disables the XOFF interrupt source and clears the stored callback.
  */
-void SC16IS752::detachXOFFInterrupt() {
+void SC16IS7xx_UART::detachXOFFInterrupt() {
     // disable the XOFF interrupt
     enableXOFFInterrupt(false);
     // clear the callback for the interrupt
-    clearCallback(SC16IS7XX_INT_MASK_XOFF);
+    _owner->clearCallback(SC16IS7XX_INT_MASK_XOFF);
 }
 
 /**
@@ -667,22 +759,22 @@ void SC16IS752::detachXOFFInterrupt() {
  * @param callback The function to execute when the RLS interrupt is triggered.
  * This function should take no parameters and return void.
  */
-void SC16IS752::attachRLSInterrupt(voidFxnPtr callback) {
+void SC16IS7xx_UART::attachRLSInterrupt(voidFxnPtr callback) {
     // enable the RLS interrupt
     enableRLSInterrupt(true);
     // store the callback
-    storeCallback(SC16IS7XX_INT_MASK_RLS, callback);
+    _owner->storeCallback(SC16IS7XX_INT_MASK_RLS, callback);
 }
 /**
  * @brief Disable the RLS (Receiver Line Status) interrupt callback.
  *
  * Disables the RLS interrupt source and clears the stored callback.
  */
-void SC16IS752::detachRLSInterrupt() {
+void SC16IS7xx_UART::detachRLSInterrupt() {
     // disable the RLS interrupt
     enableRLSInterrupt(false);
     // clear the callback for the interrupt
-    clearCallback(SC16IS7XX_INT_MASK_RLS);
+    _owner->clearCallback(SC16IS7XX_INT_MASK_RLS);
 }
 
 /**
@@ -695,22 +787,22 @@ void SC16IS752::detachRLSInterrupt() {
  * @param callback The function to execute when the THR interrupt is triggered.
  * This function should take no parameters and return void.
  */
-void SC16IS752::attachTHRInterrupt(voidFxnPtr callback) {
+void SC16IS7xx_UART::attachTHRInterrupt(voidFxnPtr callback) {
     // enable the THR interrupt
     enableTHRInterrupt(true);
     // store the callback
-    storeCallback(SC16IS7XX_INT_MASK_THR, callback);
+    _owner->storeCallback(SC16IS7XX_INT_MASK_THR, callback);
 }
 /**
  * @brief Disable the THR (Transmit Holding Register) interrupt callback.
  *
  * Disables the THR interrupt source and clears the stored callback.
  */
-void SC16IS752::detachTHRInterrupt() {
+void SC16IS7xx_UART::detachTHRInterrupt() {
     // disable the THR interrupt
     enableTHRInterrupt(false);
     // clear the callback for the interrupt
-    clearCallback(SC16IS7XX_INT_MASK_THR);
+    _owner->clearCallback(SC16IS7XX_INT_MASK_THR);
 }
 
 /**
@@ -723,22 +815,22 @@ void SC16IS752::detachTHRInterrupt() {
  * @param callback The function to execute when the RHR interrupt is triggered.
  * This function should take no parameters and return void.
  */
-void SC16IS752::attachRHRInterrupt(voidFxnPtr callback) {
+void SC16IS7xx_UART::attachRHRInterrupt(voidFxnPtr callback) {
     // enable the RHR interrupt
     enableRHRInterrupt(true);
     // store the callback
-    storeCallback(SC16IS7XX_INT_MASK_RHR, callback);
+    _owner->storeCallback(SC16IS7XX_INT_MASK_RHR, callback);
 }
 /**
  * @brief Disable the RHR (Receive Holding Register) interrupt callback.
  *
  * Disables the RHR interrupt source and clears the stored callback.
  */
-void SC16IS752::detachRHRInterrupt() {
+void SC16IS7xx_UART::detachRHRInterrupt() {
     // disable the RHR interrupt
     enableRHRInterrupt(false);
     // clear the callback for the interrupt
-    clearCallback(SC16IS7XX_INT_MASK_RHR);
+    _owner->clearCallback(SC16IS7XX_INT_MASK_RHR);
 }
 
 /**
@@ -751,10 +843,10 @@ void SC16IS752::detachRHRInterrupt() {
  * @param callback The function to execute when the timeout interrupt is
  * triggered. This function should take no parameters and return void.
  */
-void SC16IS752::attachTimeoutInterrupt(voidFxnPtr callback) {
+void SC16IS7xx_UART::attachTimeoutInterrupt(voidFxnPtr callback) {
     // this interrupt doesn't have an enable function
     // store the callback
-    storeCallback(SC16IS7XX_INT_MASK_TIMEOUT, callback);
+    _owner->storeCallback(SC16IS7XX_INT_MASK_TIMEOUT, callback);
 }
 /**
  * @brief Detach the timeout interrupt callback.
@@ -762,10 +854,10 @@ void SC16IS752::attachTimeoutInterrupt(voidFxnPtr callback) {
  * Clears the stored callback for the timeout interrupt. This interrupt does
  * not have a separate enable function in this library.
  */
-void SC16IS752::detachTimeoutInterrupt() {
+void SC16IS7xx_UART::detachTimeoutInterrupt() {
     // this interrupt doesn't have an enable function
     // clear the callback for the interrupt
-    clearCallback(SC16IS7XX_INT_MASK_TIMEOUT);
+    _owner->clearCallback(SC16IS7XX_INT_MASK_TIMEOUT);
 }
 
 /**
@@ -777,8 +869,10 @@ void SC16IS752::detachTimeoutInterrupt() {
  * stop bits, aligned with Arduino HardwareSerial config values (eg,
  * SERIAL_8N1).
  */
-void SC16IS752::begin(unsigned long baud, uint8_t config) {
-    if (_activeObject != this) { _activeObject = this; }
+void SC16IS7xx_UART::begin(unsigned long baud, uint8_t config) {
+    if (SC16IS7xx::_activeObject != _owner) {
+        SC16IS7xx::_activeObject = _owner;
+    }
     enableFIFO(true);
     setBaudrate(baud);
     setLine(config);
@@ -792,7 +886,7 @@ void SC16IS752::begin(unsigned long baud, uint8_t config) {
  * @param config The typed configuration enum encoding the data bits, parity,
  * and stop bits.
  */
-void SC16IS752::begin(unsigned long baud, SC16IS7XXSerialConfig config) {
+void SC16IS7xx_UART::begin(unsigned long baud, SC16IS7xxSerialConfig config) {
     begin(baud, static_cast<uint8_t>(config));
 }
 
@@ -805,9 +899,11 @@ void SC16IS752::begin(unsigned long baud, SC16IS7XXSerialConfig config) {
  * force '0')
  * @param stopBits the number of stop bits (1 or 2)
  */
-void SC16IS752::begin(unsigned long baud, uint8_t dataBits, uint8_t parity,
-                      uint8_t stopBits) {
-    if (_activeObject != this) { _activeObject = this; }
+void SC16IS7xx_UART::begin(unsigned long baud, uint8_t dataBits, uint8_t parity,
+                           uint8_t stopBits) {
+    if (SC16IS7xx::_activeObject != _owner) {
+        SC16IS7xx::_activeObject = _owner;
+    }
     enableFIFO(true);
     setBaudrate(baud);
     setLine(dataBits, parity, stopBits);
@@ -820,68 +916,78 @@ void SC16IS752::begin(unsigned long baud, uint8_t dataBits, uint8_t parity,
  *
  * @param baud The baud rate to set for UART communication.
  */
-void SC16IS752::begin(unsigned long baud) {
-    begin(baud, SC16IS7XXSerialConfig::C8N1);
+void SC16IS7xx_UART::begin(unsigned long baud) {
+    begin(baud, SC16IS7xxSerialConfig::C8N1);
 }
 
 /**
  * @brief Get number of bytes available in RX FIFO.
  * @return uint8_t Number of available bytes in RX FIFO.
  */
-uint8_t SC16IS752::FIFOAvailableData() {
-    Adafruit_BusIO_Register RXLVL(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+uint8_t SC16IS7xx_UART::FIFOAvailableData() {
+    Adafruit_BusIO_Register RXLVL(_owner->i2c_dev, _owner->spi_dev,
+                                  SC16IS7XX_SPIREG,
                                   (SC16IS7XX_REG_RXLVL << 3 | _channel << 1));
-#if defined(SC16IS752_DEBUG_SERIAL)
+#if defined(SC16IS7XX_DEBUG_SERIAL)
     int available_bytes = RXLVL.read();
-    SC16IS752_DEBUG_SERIAL.print("=====RX FIFO Available data:");
-    SC16IS752_DEBUG_SERIAL.println(available_bytes, DEC);
+    SC16IS7XX_DEBUG_SERIAL.print("=====RX FIFO Available data:");
+    SC16IS7XX_DEBUG_SERIAL.println(available_bytes, DEC);
     return available_bytes;
 #else
     return RXLVL.read();
-#endif  // SC16IS752_DEBUG_SERIAL
+#endif  // SC16IS7XX_DEBUG_SERIAL
 }
 
 /**
  * @brief Get free space in TX FIFO.
  * @return uint8_t Number of available TX FIFO slots.
  */
-uint8_t SC16IS752::FIFOAvailableSpace() {
-    Adafruit_BusIO_Register TXLVL(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+uint8_t SC16IS7xx_UART::FIFOAvailableSpace() {
+    Adafruit_BusIO_Register TXLVL(_owner->i2c_dev, _owner->spi_dev,
+                                  SC16IS7XX_SPIREG,
                                   (SC16IS7XX_REG_TXLVL << 3 | _channel << 1));
-#if defined(SC16IS752_DEBUG_SERIAL)
+#if defined(SC16IS7XX_DEBUG_SERIAL)
     int available_bytes = TXLVL.read();
-    SC16IS752_DEBUG_SERIAL.print("=====TX FIFO Available space:");
-    SC16IS752_DEBUG_SERIAL.println(available_bytes, DEC);
+    SC16IS7XX_DEBUG_SERIAL.print("=====TX FIFO Available space:");
+    SC16IS7XX_DEBUG_SERIAL.println(available_bytes, DEC);
     return available_bytes;
 #else
     return TXLVL.read();
-#endif  // SC16IS752_DEBUG_SERIAL
+#endif  // SC16IS7XX_DEBUG_SERIAL
 }
 
 /**
  * @brief Read one byte from UART RX FIFO.
  * @return int Byte value, or -1 when no data is available.
  */
-int SC16IS752::rawRead() {
+int SC16IS7xx_UART::rawRead() {
     // We need to check if anything is in the buffer before trying to read,
-    // otherwise the SC16IS752 will return whatever stale data is in the RHR
+    // otherwise the SC16IS7xx will return whatever stale data is in the RHR
     // register from the last time it was read, even if that data has already
     // been read from the FIFO.
     if (FIFOAvailableData() == 0) { return -1; }
-    Adafruit_BusIO_Register RHR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+    Adafruit_BusIO_Register RHR(_owner->i2c_dev, _owner->spi_dev,
+                                SC16IS7XX_SPIREG,
                                 (SC16IS7XX_REG_RHR << 3 | _channel << 1));
     return RHR.read();
 }
 
-int SC16IS752::rawRead(uint8_t* buf, size_t size) {
+int SC16IS7xx_UART::rawRead(uint8_t* buf, size_t size) {
+    if (size == 0) { return 0; }
+
     // We need to check if anything is in the buffer before trying to read,
-    // otherwise the SC16IS752 will return whatever stale data is in the RHR
+    // otherwise the SC16IS7xx will return whatever stale data is in the RHR
     // register from the last time it was read, even if that data has already
     // been read from the FIFO.
-    if (FIFOAvailableData() == 0) { return -1; }
-    Adafruit_BusIO_Register RHR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+    uint8_t available = FIFOAvailableData();
+    if (available == 0) { return -1; }
+    size_t toRead = size;
+    if (toRead > available) { toRead = available; }
+    Adafruit_BusIO_Register RHR(_owner->i2c_dev, _owner->spi_dev,
+                                SC16IS7XX_SPIREG,
                                 (SC16IS7XX_REG_RHR << 3 | _channel << 1));
-    return RHR.read(buf, size);
+    bool ok = RHR.read(buf, static_cast<uint8_t>(toRead));
+    return ok ? static_cast<int>(toRead) : -1;
 }
 
 /**
@@ -889,13 +995,13 @@ int SC16IS752::rawRead(uint8_t* buf, size_t size) {
  *
  * @return int Byte value, or -1 when no data is available.
  */
-int SC16IS752::read() {
+int SC16IS7xx_UART::read() {
     // if there's a peeked byte, return that instead of reading from the FIFO
     if (_peek_flag) {
-#if defined(SC16IS752_DEBUG_SERIAL)
-        SC16IS752_DEBUG_SERIAL.print("==Returning peeked byte: ");
-        SC16IS752_DEBUG_SERIAL.println(static_cast<char>(_peek_buf));
-#endif  // SC16IS752_DEBUG_SERIAL
+#if defined(SC16IS7XX_DEBUG_SERIAL)
+        SC16IS7XX_DEBUG_SERIAL.print("==Returning peeked byte: ");
+        SC16IS7XX_DEBUG_SERIAL.println(static_cast<char>(_peek_buf));
+#endif  // SC16IS7XX_DEBUG_SERIAL
         _peek_flag = 0;
         return _peek_buf;
     }
@@ -911,17 +1017,21 @@ int SC16IS752::read() {
  * @param size The maximum number of bytes to read into the buffer.
  * @return The number of bytes read, or -1 if no data is available.
  */
-int SC16IS752::read(uint8_t* buf, size_t size) {
+int SC16IS7xx_UART::read(uint8_t* buf, size_t size) {
+    if (size == 0) { return 0; }
+
     // if there's a peeked byte, place that in the first position of the buffer
     // and read the rest from the FIFO
     if (_peek_flag) {
-#if defined(SC16IS752_DEBUG_SERIAL)
-        SC16IS752_DEBUG_SERIAL.print("==Appending peeked byte: ");
-        SC16IS752_DEBUG_SERIAL.println(static_cast<char>(_peek_buf));
-#endif  // SC16IS752_DEBUG_SERIAL
-        _peek_flag = 0;
-        *buf       = _peek_buf;
-        return rawRead(buf + 1, size - 1) + 1;
+#if defined(SC16IS7XX_DEBUG_SERIAL)
+        SC16IS7XX_DEBUG_SERIAL.print("==Appending peeked byte: ");
+        SC16IS7XX_DEBUG_SERIAL.println(static_cast<char>(_peek_buf));
+#endif  // SC16IS7XX_DEBUG_SERIAL
+        _peek_flag          = 0;
+        *buf                = _peek_buf;
+        int additionalBytes = 0;
+        if (size > 1) { additionalBytes = rawRead(buf + 1, size - 1); }
+        return 1 + (additionalBytes > 0 ? additionalBytes : 0);
     }
     // otherwise, read from the FIFO as normal
     return rawRead(buf, size);
@@ -931,12 +1041,12 @@ int SC16IS752::read(uint8_t* buf, size_t size) {
  * @brief Return number of bytes waiting in RX FIFO.
  * @return int Number of readable bytes.
  */
-int SC16IS752::available() {
-#if defined(SC16IS752_DEBUG_SERIAL)
+int SC16IS7xx_UART::available() {
+#if defined(SC16IS7XX_DEBUG_SERIAL)
     if (_peek_flag) {
-        SC16IS752_DEBUG_SERIAL.println("==Available: 1 byte in peek buffer");
+        SC16IS7XX_DEBUG_SERIAL.println("==Available: 1 byte in peek buffer");
     }
-#endif  // SC16IS752_DEBUG_SERIAL
+#endif  // SC16IS7XX_DEBUG_SERIAL
     return FIFOAvailableData() + (_peek_flag ? 1 : 0);
 }
 
@@ -944,7 +1054,7 @@ int SC16IS752::available() {
  * @brief Peek one byte from RX FIFO without consuming it.
  * @return int Next byte value, or -1 when no data is available.
  */
-int SC16IS752::peek() {
+int SC16IS7xx_UART::peek() {
     if (_peek_flag == 0) {
         _peek_buf = read();
         if (_peek_buf >= 0) { _peek_flag = 1; }
@@ -958,15 +1068,14 @@ int SC16IS752::peek() {
  * @param size Number of bytes to send.
  * @return size_t Number of bytes written.
  */
-size_t SC16IS752::write(const uint8_t* buf, size_t size) {
+size_t SC16IS7xx_UART::write(const uint8_t* buf, size_t size) {
     if (size == 0) return 0;
 
-    // Pointer to where in the buffer we're up to
-    // A const cast is need to cast-away the constant-ness of the buffer (ie,
-    // modify it).
-    uint8_t* txPtr      = const_cast<uint8_t*>(buf);
-    size_t   bytesSent  = 0;
-    uint32_t stallStart = 0;
+    // Pointer to where in the buffer we're up to.
+    const uint8_t* txPtr      = buf;
+    const uint8_t* txEnd      = buf + size;
+    size_t         bytesSent  = 0;
+    uint32_t       stallStart = 0;
 
     do {
         // check how much space is available in the TX FIFO
@@ -989,13 +1098,12 @@ size_t SC16IS752::write(const uint8_t* buf, size_t size) {
         // we don't read past the end of the buffer.
         size_t sendLength = space;
         // Ensure the program doesn't read past the allocated memory
-        if (txPtr + space > const_cast<uint8_t*>(buf) + size) {
-            sendLength = const_cast<uint8_t*>(buf) + size - txPtr;
-        }
+        if (txPtr + space > txEnd) { sendLength = txEnd - txPtr; }
         // write out the number of bytes for this chunk
-        Adafruit_BusIO_Register THR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+        Adafruit_BusIO_Register THR(_owner->i2c_dev, _owner->spi_dev,
+                                    SC16IS7XX_SPIREG,
                                     (SC16IS7XX_REG_THR << 3 | _channel << 1));
-        THR.write(txPtr, sendLength);
+        THR.write(const_cast<uint8_t*>(txPtr), sendLength);
         bytesSent += sendLength;  // bump up number of bytes sent
         txPtr += sendLength;      // bump up the pointer
     } while (bytesSent < size);
@@ -1007,7 +1115,7 @@ size_t SC16IS752::write(const uint8_t* buf, size_t size) {
  * @param c Byte to transmit.
  * @return size_t Number of bytes written.
  */
-size_t SC16IS752::write(uint8_t c) {
+size_t SC16IS7xx_UART::write(uint8_t c) {
     return write(&c, 1);
 }
 /**
@@ -1016,7 +1124,7 @@ size_t SC16IS752::write(uint8_t c) {
  * @param str Pointer to the null-terminated string to transmit.
  * @return size_t Number of bytes written.
  */
-size_t SC16IS752::write(const char* str) {
+size_t SC16IS7xx_UART::write(const char* str) {
     if (str == nullptr) return 0;
     return write((const uint8_t*)str, strlen(str));
 }
@@ -1024,12 +1132,22 @@ size_t SC16IS752::write(const char* str) {
 /**
  * @brief Block until TX shift register is empty.
  */
-void SC16IS752::flush() {
-    Adafruit_BusIO_Register     LSR(i2c_dev, spi_dev, SC16IS7XX_SPIREG,
+void SC16IS7xx_UART::flush() {
+    Adafruit_BusIO_Register     LSR(_owner->i2c_dev, _owner->spi_dev,
+                                    SC16IS7XX_SPIREG,
                                     (SC16IS7XX_REG_LSR << 3 | _channel << 1));
     Adafruit_BusIO_RegisterBits thr_empty_bit(&LSR, 1, 7);
+    uint32_t                    stallStart = 0;
     while (!thr_empty_bit.read()) {
-        // do nothing, just wait
+        if (stallStart == 0) { stallStart = millis(); }
+        if ((millis() - stallStart) >= _timeout) {
+#if defined(SC16IS7XX_DEBUG_SERIAL)
+            SC16IS7XX_DEBUG_SERIAL.println(
+                "flush() timed out waiting for TX shift register to empty");
+#endif  // SC16IS7XX_DEBUG_SERIAL
+            return;
+        }
+        yield();
     }
 }
 

@@ -1,7 +1,12 @@
 # EnviroDIY SC16IS7XX Arduino Library
 
-This is a library for the SC16IS752 and SC16IS762 series of UART interfaces by NXP.
-It should also work with the SC16IS750, though that chip only supports one UART channel.
+This is a library for the SC16IS740, SC16IS750, SC16IS760, SC16IS752 and SC16IS762 series of UART interfaces by NXP.
+
+All 5 chips are I2C-bus/SPI bus interfaces to a single or dual-channel high-performance UART offering data rates up to 5 Mbit/s, low operating and sleeping current.
+All chips except the SC16IS740 also provide 8 additional programmable I/O pins.
+
+The SC16IS740/750/760’s internal register set is backward-compatible with the widely used and widely popular 16C450.
+This library should also support those chips since the register sets match.
 
 <!--! @tableofcontents -->
 
@@ -18,10 +23,33 @@ It should also work with the SC16IS750, though that chip only supports one UART 
 
 ## Using This Library With Other Hardware
 
-As the library interfaces with the SC16IS752 or SC16IS762 via I2C or SPI it should communicate just fine with most hardware variants provided the following is observed:
+Use an explicit chip type that matches your hardware:
 
-- The default crystal frequency is 14.7456MHz (147456000Hz). If a different crystal is used you must call the `setCrystalFrequency(frequency)` method before `setBaudRate` so that the correct divisor can be calculated.
-- The default I2C address is 0x4D (8-bit address of 0x90). That is the address for a chip with both A0 and A1 pulled HIGH.  If a different address configuration is needed, you must set it in the `begin_i2c(addr, Wire)` function
+- SC16IS740: 1 UART channel, 0 GPIO pins
+- SC16IS750: 1 UART channel, 8 GPIO pins
+- SC16IS760: 1 UART channel, 8 GPIO pins
+- SC16IS752: 2 UART channels, 8 GPIO pins
+- SC16IS762: 2 UART channels, 8 GPIO pins
+
+The driver is implemented once and configured by compile-time chip traits and per-instance capability limits.
+This means the same API is available for all variants, while channel and GPIO bounds are enforced for the selected chip.
+
+Typical setup flow:
+
+1. Create the chip object using the exact class for your device (for example, SC16IS740, SC16IS750, SC16IS760, SC16IS752, or SC16IS762).
+2. Initialize transport with begin_i2c(...) or begin_SPI(...).
+3. Acquire UART channel objects with uartA() and, for dual-UART chips, uartB().
+4. Configure each UART channel (for example enableFIFO, setBaudrate, setLine).
+
+- The default crystal frequency is 14.7456 MHz (14745600 Hz).
+  - If a different crystal is used, call `setCrystalFrequency(frequency)` on each SC16IS7xx_UART object before `setBaudrate`, or define `SC16IS7XX_DEFAULT_XTAL_FREQ=xx` with a build flag so the divisor is calculated correctly.
+- The default I2C address is 0x48 (8-bit address of 0x90).
+  - This default applies when A0 and A1 are both pulled HIGH.
+  - If a different address configuration is needed, set it in `begin_i2c(addr, Wire)` or define `SC16IS7XX_DEFAULT_ADDRESS=xx` with a build flag.
+
+> [!NOTE]
+> For the EnviroDIY Mayfly v2.0.0 the correct crystal frequency and I2C address are already defined in the variants files.
+> You do not need to define anything or call any functions to correct the frequency or address.
 
 ## Library Credits and Provenance
 

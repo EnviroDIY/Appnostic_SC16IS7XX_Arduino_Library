@@ -37,7 +37,7 @@ reviews:
       instructions: >-
         Review the C++ code, point out issues relative to principles of clean code, expressiveness, and performance.
         Since this is an Arduino project, never suggest using the standard library (std::).
-        For memory savings, prefer defines to const variables, and prefer using the F() macro for string literals longer than a single character.
+        For memory savings, prefer defines to const variables.
         Defines should be in the headers.
         Doxygen function documentation should be in the cpp implementation files but documentation for classes, structs, enums, defines, and unique parameters should be in the header files.
         Override functions don't need Doxygen comments, unless they have unique parameters or behavior that needs to be documented.
@@ -47,7 +47,7 @@ reviews:
       instructions: >-
         Review the C++ code, point out issues relative to principles of clean code, expressiveness, and performance.
         Since this is an Arduino project, never suggest using the standard library (std::).
-        For memory savings, prefer defines to const variables, and prefer using the F() macro for string literals longer than a single character.
+        For memory savings, prefer defines to const variables.
         Defines should be in the headers.
         Doxygen function documentation should be in the cpp implementation files but documentation for classes, structs, enums, defines, and unique parameters should be in the header files.
         Override functions don't need Doxygen comments, unless they have unique parameters or behavior that needs to be documented.

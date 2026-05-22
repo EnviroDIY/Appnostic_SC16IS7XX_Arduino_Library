@@ -17,11 +17,13 @@
  *
  */
 
-#include <SC16IS752.h>
+#include <SC16IS7xx.h>
 
 int8_t powerPin = -1;
 
-SC16IS752 ExtSerial(SC16IS752_CHANNEL_A);
+// Create the port expander object and channel A serial interface reference
+SC16IS752       ExtPort;
+SC16IS7xx_UART& ExtSerial = ExtPort.uartA();
 
 void setup() {
     // power the chip if necessary
@@ -37,7 +39,7 @@ void setup() {
     Serial.println("SC16IS7XX Test");
 
     Serial.print("Checking for the SC16IS7XX...");
-    if (!ExtSerial.begin_i2c()) {
+    if (!ExtPort.begin_i2c()) {
         Serial.println("not found. Please ensure that the module\r\nis plugged "
                        "in and securely fastened to the baseboard.");
         while (true) delay(100);

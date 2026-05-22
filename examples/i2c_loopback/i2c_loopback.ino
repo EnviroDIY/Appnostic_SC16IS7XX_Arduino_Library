@@ -18,12 +18,16 @@
  * ...
  */
 
-#include <SC16IS752.h>
+#include <SC16IS7xx.h>
 
+// The power pin for the external port expander, if necessary. Set to -1 if not
+// used.
 int8_t powerPin = -1;
 
-SC16IS752 ExtSerialA(SC16IS752_CHANNEL_A);
-SC16IS752 ExtSerialB(SC16IS752_CHANNEL_B);
+// Create the port expander object and serial interface references
+SC16IS752       ExtPort;
+SC16IS7xx_UART& ExtSerialA = ExtPort.uartA();
+SC16IS7xx_UART& ExtSerialB = ExtPort.uartB();
 
 int i = 0;
 
@@ -41,7 +45,7 @@ void setup() {
     Serial.println("SC16IS7XX Test");
 
     Serial.print("Checking for the SC16IS7XX...");
-    if (!ExtSerialA.begin_i2c()) {
+    if (!ExtPort.begin_i2c()) {
         Serial.println("not found. Please ensure that the module\r\nis plugged "
                        "in and securely fastened to the baseboard.");
         while (true) delay(100);
@@ -53,9 +57,6 @@ void setup() {
     ExtSerialA.setBaudrate(115200);
     ExtSerialA.setLine(8, 0, 1);  // 8,n,1
 
-    // instantiate the second channel. There is no need for additional checking
-    // here.
-    ExtSerialB.begin_i2c();
     ExtSerialB.enableFIFO(true);  // enable fifo
     ExtSerialB.setBaudrate(115200);
     ExtSerialB.setLine(8, 0, 1);  // 8,n,1

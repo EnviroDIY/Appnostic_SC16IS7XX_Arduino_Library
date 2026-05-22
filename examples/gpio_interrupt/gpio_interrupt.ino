@@ -16,12 +16,15 @@
  */
 
 #include <pins_arduino.h>
-#include <SC16IS752.h>
+#include <SC16IS7xx.h>
 
+// The power pin for the external port expander, if necessary. Set to -1 if not
+// used.
 int8_t powerPin = -1;
 
-SC16IS752 ExtSerial(SC16IS752_CHANNEL_A);
-
+// Create the port expander object and channel A serial interface reference
+SC16IS752       ExtPort;
+SC16IS7xx_UART& ExtSerial = ExtPort.uartA();
 
 // The GPIO pin on the SC16IS7XX to use for the interrupt test
 #define GPIO_PIN 0
@@ -50,7 +53,7 @@ void setup() {
     Serial.println("SC16IS7XX Test");
 
     Serial.print("Checking for the SC16IS7XX...");
-    if (!ExtSerial.begin_i2c()) {
+    if (!ExtPort.begin_i2c()) {
         Serial.println("not found. Please ensure that the module\r\nis plugged "
                        "in and securely fastened to the baseboard.");
         while (true) delay(100);
@@ -62,7 +65,7 @@ void setup() {
     // `ExtSerial.attachInterrupt` here, but for the ESP32, we need to use the
     // 'Pin' version of this function to avoid conflicts with the built-in
     // interrupt functions.
-    ExtSerial.attachPinInterrupt(GPIO_PIN, onInterrupt);
+    ExtPort.attachPinInterrupt(GPIO_PIN, onInterrupt);
 
 // set the pin mode for the pin on the Arduino connected to the IRQ pin and
 // attach the interrupt handler to it. The interrupt handler will be called when
@@ -73,7 +76,7 @@ void setup() {
     attachInterrupt(digitalPinToInterrupt(SC16IS7XX_IRQ_PIN), onInterrupt,
                     FALLING);  // interrupt transitions from high to low
 #else
-    attachInterrupt(SC16IS7XX_IRQ_PIN, SC16IS7XX::interruptHandler,
+    attachInterrupt(SC16IS7XX_IRQ_PIN, SC16IS7xx::interruptHandler,
                     FALLING);  // interrupt transitions from high to low
 #endif
 }

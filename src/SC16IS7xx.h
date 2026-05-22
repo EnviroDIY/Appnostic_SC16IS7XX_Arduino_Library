@@ -1,18 +1,18 @@
 /**
- * @file SC16IS7XX.h
+ * @file SC16IS7xx.h
  * @copyright Stroud Water Research Center
  * Part of the EnviroDIY ModularSensors library for Arduino.
  * This library is published under the BSD-3 license.
  * @author Sara Geleskie Damiano <sdamiano@stroudcenter.org>
  *
- * @brief Contains the SC16IS7XX class and defines for many of the
+ * @brief Declaration of the SC16IS7xx class and defines for many of the
  * device's features.
  */
 
 #ifndef _SC16IS7XX_H_
 #define _SC16IS7XX_H_
 
-#if ARDUINO >= 100
+#if defined(ARDUINO) && ARDUINO >= 100
 #include "Arduino.h"
 #else  // if ARDUINO >= 100
 #include "WProgram.h"
@@ -42,16 +42,32 @@
  * Features of the SC16IS7XX family of devices.
  */
 /**@{*/
-#define SC16IS7XX_UART_CHANNELS (2)  ///< Number of UART channels on the device
-#define SC16IS7XX_GPIO_PINS (8)      ///< Number of GPIO pins on the device
-#define SC16IS7XX_NON_GPIO_INTERRUPTS \
-    (11)  ///< The number of non-pin-related interrupt sources (DSR, DTR, CD,
-          ///< RI,
-          ///< CTS, RTS, XOFF, RLS, RHR, THR, Timeout) on the device. These
-///< interrupts are shared between both channels and are not related to
-///< the GPIO pins.
+#define SC16IS740_UART_CHANNELS (1)  ///< Number of UART channels on SC16IS740
+#define SC16IS750_UART_CHANNELS (1)  ///< Number of UART channels on SC16IS750
+#define SC16IS760_UART_CHANNELS (1)  ///< Number of UART channels on SC16IS760
+#define SC16IS752_UART_CHANNELS (2)  ///< Number of UART channels on SC16IS752
+#define SC16IS762_UART_CHANNELS (2)  ///< Number of UART channels on SC16IS762
+
+#define SC16IS740_GPIO_PINS (0)  ///< Number of GPIO pins on SC16IS740
+#define SC16IS750_GPIO_PINS (8)  ///< Number of GPIO pins on SC16IS750
+#define SC16IS760_GPIO_PINS (8)  ///< Number of GPIO pins on SC16IS760
+#define SC16IS752_GPIO_PINS (8)  ///< Number of GPIO pins on SC16IS752
+#define SC16IS762_GPIO_PINS (8)  ///< Number of GPIO pins on SC16IS762
+
+/**
+ * @brief The number of non-pin-related interrupt sources (DSR, DTR, CD, RI,
+ * CTS, RTS, XOFF, RLS, RHR, THR, Timeout) on the device. These interrupts are
+ * shared between both channels and are not related to the GPIO pins.
+ */
+#define SC16IS7XX_NON_GPIO_INTERRUPTS (11)
+
 #define SC16IS7XX_SPIREG ADDRBIT8_HIGH_TOREAD  ///< SPI register type
 /**@}*/
+
+/// The maximum number of UART channels on any device in the SC16IS7XX family.
+#define SC16IS7XX_MAX_UART_CHANNELS (2)
+/// The maximum number of GPIO pins on any device in the SC16IS7XX family.
+#define SC16IS7XX_MAX_GPIO_PINS (8)
 
 /**
  * @page page_device_addresses Possible Device Addresses
@@ -129,7 +145,7 @@
  * @note Because the address is shifted left by 3 bits and the channel is
  * shifted left by 1 bit, the register address to use in the Wire functions is
  * effectively (reg_addr << 3 | channel << 1) when writing or reading registers
- * for a specific channel on the SC16IS752.
+ * for a specific channel on the SC16IS7xx.
  */
 /**@{*/
 // clang-format on
@@ -361,23 +377,43 @@
 /// @brief  Function pointer type for interrupt callbacks
 typedef void (*voidFxnPtr)(void);
 
+#define SC16IS7XX_CHANNEL_A 0x00  ///< Channel A of the SC16IS7xx
+#define SC16IS7XX_CHANNEL_B 0x01  ///< Channel B of the SC16IS7xx
+
+class SC16IS7xx;
+
+#include "SC16IS7xx_UART.h"
+
 /**
  * @brief Base driver for SC16IS7XX family devices using I2C or SPI.
  */
-class SC16IS7XX {
+class SC16IS7xx {
  private:
-    uint32_t crystal_frequency = SC16IS7XX_DEFAULT_XTAL_FREQ;
+    friend class SC16IS7xx_UART;
+
     bool gpioPullDirection = HIGH;  ///< false for pull-down, true for pull-up
+
+    SC16IS7xx_UART _uartStorage[SC16IS7XX_MAX_UART_CHANNELS];
+
+    uint8_t _uartChannelCount;
+    uint8_t _gpioPinCount;
 
     bool _init(void);
 
-    voidFxnPtr ISRcallback[SC16IS7XX_GPIO_PINS + SC16IS7XX_NON_GPIO_INTERRUPTS];
-    uint16_t   ISRlist[SC16IS7XX_GPIO_PINS + SC16IS7XX_NON_GPIO_INTERRUPTS];
-    uint8_t    nints;  // Stores total number of attached interrupts
+    voidFxnPtr
+        ISRcallback[SC16IS7XX_MAX_GPIO_PINS + SC16IS7XX_NON_GPIO_INTERRUPTS];
+    uint16_t ISRlist[SC16IS7XX_MAX_GPIO_PINS + SC16IS7XX_NON_GPIO_INTERRUPTS];
+    volatile uint8_t nints;  // Stores total number of attached interrupts
 
  protected:
     Adafruit_I2CDevice* i2c_dev = nullptr;  ///< Pointer to I2C bus interface
     Adafruit_SPIDevice* spi_dev = nullptr;  ///< Pointer to SPI bus interface
+
+    SC16IS7xx(uint8_t uartChannelCount, uint8_t gpioPinCount);
+    SC16IS7xx(const SC16IS7xx&)            = delete;
+    SC16IS7xx& operator=(const SC16IS7xx&) = delete;
+    SC16IS7xx(SC16IS7xx&&)                 = delete;
+    SC16IS7xx& operator=(SC16IS7xx&&)      = delete;
 
     virtual void resetDevice();
     virtual bool ping();
@@ -387,7 +423,7 @@ class SC16IS7XX {
     void callCallback(uint16_t callbackMask);
     /// static pointer to active SC16IS7XX instance, needed for easy ISR
     /// handling
-    static SC16IS7XX* _activeObject;
+    static SC16IS7xx* _activeObject;
 
     /// flag to indicate whether the GPIO interrupts are configured for latching
     /// or not. If not, the state of the pin at the time of the interrupt will
@@ -401,14 +437,38 @@ class SC16IS7XX {
 
  public:
     /**
-     * @brief Construct a new SC16IS7XX object.
+     * @brief Destroy the SC16IS7xx object.
      */
-    SC16IS7XX() = default;
+    ~SC16IS7xx();
 
     /**
-     * @brief Destroy the SC16IS7XX object.
+     * @brief Get a UART channel interface by channel index.
+     * @param channel Channel number (SC16IS7XX_CHANNEL_A or
+     * SC16IS7XX_CHANNEL_B).
+     * @return Pointer to the channel object, or nullptr for invalid channel.
      */
-    ~SC16IS7XX() = default;
+    SC16IS7xx_UART* getUART(uint8_t channel);
+
+    /**
+     * @brief Get channel A UART interface.
+     * @return Reference to channel A interface.
+     */
+    SC16IS7xx_UART& uartA() {
+        return _uartStorage[SC16IS7XX_CHANNEL_A];
+    }
+
+    /**
+     * @brief Get channel B UART interface.
+     * @warning On single-UART parts, this returns channel A.
+     * @return Reference to channel B interface, if the device has two UART
+     * channels, otherwise channel A.
+     */
+    SC16IS7xx_UART& uartB() {
+        if (_uartChannelCount == 1) {
+            return _uartStorage[SC16IS7XX_CHANNEL_A];
+        }
+        return _uartStorage[SC16IS7XX_CHANNEL_B];
+    }
 
     // i2c
     bool begin_i2c(uint8_t  addr    = SC16IS7XX_DEFAULT_ADDRESS,
@@ -426,10 +486,23 @@ class SC16IS7XX {
     void end();
 
     // configuration
-    void     setCrystalFrequency(uint32_t frequency);
-    uint32_t getCrystalFrequency();
-    void     setGPIOPullDirection(bool pullUp);
-    bool     getGPIOPullDirection();
+    void setGPIOPullDirection(bool pullUp);
+    bool getGPIOPullDirection();
+
+    /**
+     * @brief Get the number of UART channels available on this device.
+     * @return Number of UART channels.
+     */
+    uint8_t getUARTChannelCount() const {
+        return _uartChannelCount;
+    }
+    /**
+     * @brief Get the number of GPIO pins available on this device.
+     * @return Number of GPIO pins.
+     */
+    uint8_t getGPIOPinCount() const {
+        return _gpioPinCount;
+    }
 
     // gpio - need a uniquely named function for each of the digital read/write
     // and pin mode functions to not conflict with defines in some of the cores
@@ -441,23 +514,23 @@ class SC16IS7XX {
 #if !(defined(ESP32) && defined(ESP_ARDUINO_VERSION_MAJOR) && \
       ESP_ARDUINO_VERSION_MAJOR <= 2)
     // for cores without conflict, these are simpler
-    /// @copydoc SC16IS7XX::pinModeExternal
+    /// @copydoc SC16IS7xx::pinModeExternal
     void pinMode(uint8_t pin, uint8_t mode) {
         pinModeExternal(pin, mode);
     };
-    /// @copydoc SC16IS7XX::digitalWriteExternal
+    /// @copydoc SC16IS7xx::digitalWriteExternal
     void digitalWrite(uint8_t pin, uint8_t state) {
         digitalWriteExternal(pin, state);
     };
-    /// @copydoc SC16IS7XX::digitalReadExternal
+    /// @copydoc SC16IS7xx::digitalReadExternal
     uint8_t digitalRead(uint8_t pin) {
         return digitalReadExternal(pin);
     };
-    /// @copydoc SC16IS7XX::attachPinInterrupt
+    /// @copydoc SC16IS7xx::attachPinInterrupt
     void attachInterrupt(uint8_t pin, voidFxnPtr callback, uint8_t = 0) {
         attachPinInterrupt(pin, callback);
     };
-    /// @copydoc SC16IS7XX::detachPinInterrupt
+    /// @copydoc SC16IS7xx::detachPinInterrupt
     void detachInterrupt(uint8_t pin) {
         detachPinInterrupt(pin);
     };
@@ -477,12 +550,83 @@ class SC16IS7XX {
     void setGPIOLatch(bool enabled);
 
     uint16_t getInterruptSource();
-#if defined(SC16IS752_DEBUG_SERIAL)
+#if defined(SC16IS7XX_DEBUG_SERIAL)
     void printInterruptSource(uint16_t callbackMask);
-#endif  // SC16IS752_DEBUG_SERIAL
+#endif  // SC16IS7XX_DEBUG_SERIAL
     void        handleInterrupt(uint16_t callbackMask);
     static void interruptHandler(void);
 };
+
+/**
+ * @brief Compile-time traits describing one SC16IS7xx-family chip variant.
+ *
+ * @tparam UartChannels Number of UART channels provided by the chip.
+ * @tparam GpioPins Number of GPIO pins provided by the chip.
+ */
+template <uint8_t UartChannels, uint8_t GpioPins>
+struct SC16IS7xxChipTraits {
+    /// @brief Number of UART channels on the chip variant.
+    static constexpr uint8_t UART_CHANNELS = UartChannels;
+    /// @brief Number of GPIO pins on the chip variant.
+    static constexpr uint8_t GPIO_PINS = GpioPins;
+};
+
+/// @brief Traits for the SC16IS740 chip variant.
+using SC16IS740Traits =
+    SC16IS7xxChipTraits<SC16IS740_UART_CHANNELS, SC16IS740_GPIO_PINS>;
+/// @brief Traits for the SC16IS750 chip variant.
+using SC16IS750Traits =
+    SC16IS7xxChipTraits<SC16IS750_UART_CHANNELS, SC16IS750_GPIO_PINS>;
+/// @brief Traits for the SC16IS760 chip variant.
+using SC16IS760Traits =
+    SC16IS7xxChipTraits<SC16IS760_UART_CHANNELS, SC16IS760_GPIO_PINS>;
+/// @brief Traits for the SC16IS752 chip variant.
+using SC16IS752Traits =
+    SC16IS7xxChipTraits<SC16IS752_UART_CHANNELS, SC16IS752_GPIO_PINS>;
+/// @brief Traits for the SC16IS762 chip variant.
+using SC16IS762Traits =
+    SC16IS7xxChipTraits<SC16IS762_UART_CHANNELS, SC16IS762_GPIO_PINS>;
+
+/**
+ * @brief Convenience wrapper that binds SC16IS7xx to a trait set.
+ *
+ * @tparam Traits A SC16IS7xxChipTraits specialization describing the chip
+ * variant.
+ */
+template <typename Traits>
+class SC16IS7xxChip : public SC16IS7xx {
+ public:
+    /**
+     * @brief Construct a chip wrapper using compile-time trait values.
+     *
+     * This constructor takes no runtime parameters. The UART channel count and
+     * GPIO pin count are taken from @p Traits and forwarded to the
+     * SC16IS7xx base class constructor.
+     */
+    SC16IS7xxChip() : SC16IS7xx(Traits::UART_CHANNELS, Traits::GPIO_PINS) {}
+};
+
+/**
+ * @brief Convenience alias template for selecting a chip wrapper by traits.
+ *
+ * This is useful when you want to name the chip type at compile time without
+ * spelling out SC16IS7xxChip<Traits> at the call site.
+ *
+ * @tparam Traits A SC16IS7xxChipTraits specialization.
+ */
+template <typename Traits>
+using SC16IS7xxT = SC16IS7xxChip<Traits>;
+
+/// @brief Concrete chip type for the SC16IS740.
+using SC16IS740 = SC16IS7xxChip<SC16IS740Traits>;
+/// @brief Concrete chip type for the SC16IS750.
+using SC16IS750 = SC16IS7xxChip<SC16IS750Traits>;
+/// @brief Concrete chip type for the SC16IS760.
+using SC16IS760 = SC16IS7xxChip<SC16IS760Traits>;
+/// @brief Concrete chip type for the SC16IS752.
+using SC16IS752 = SC16IS7xxChip<SC16IS752Traits>;
+/// @brief Concrete chip type for the SC16IS762.
+using SC16IS762 = SC16IS7xxChip<SC16IS762Traits>;
 
 #endif  // _SC16IS7XX_H_
 
