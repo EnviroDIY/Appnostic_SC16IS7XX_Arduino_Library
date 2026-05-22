@@ -24,10 +24,10 @@
 // used.
 int8_t powerPin = -1;
 
-// Create the port expander object and empty pointers for the serial interfaces
+// Create the port expander object and serial interface references
 SC16IS752       ExtPort;
-SC16IS7xx_UART* ExtSerialA = nullptr;
-SC16IS7xx_UART* ExtSerialB = nullptr;
+SC16IS7xx_UART& ExtSerialA = ExtPort.uartA();
+SC16IS7xx_UART& ExtSerialB = ExtPort.uartB();
 
 int i = 0;
 
@@ -52,29 +52,22 @@ void setup() {
     }
     Serial.println("found!");
 
-    ExtSerialA = ExtPort.uartA();
-    ExtSerialB = ExtPort.uartB();
-    if (!ExtSerialA || !ExtSerialB) {
-        Serial.println("failed to create UART channels");
-        while (true) delay(100);
-    }
-
     // set some parameters
-    ExtSerialA->enableFIFO(true);  // enable fifo
-    ExtSerialA->setBaudrate(115200);
-    ExtSerialA->setLine(8, 0, 1);  // 8,n,1
+    ExtSerialA.enableFIFO(true);  // enable fifo
+    ExtSerialA.setBaudrate(115200);
+    ExtSerialA.setLine(8, 0, 1);  // 8,n,1
 
-    ExtSerialB->enableFIFO(true);  // enable fifo
-    ExtSerialB->setBaudrate(115200);
-    ExtSerialB->setLine(8, 0, 1);  // 8,n,1
+    ExtSerialB.enableFIFO(true);  // enable fifo
+    ExtSerialB.setBaudrate(115200);
+    ExtSerialB.setLine(8, 0, 1);  // 8,n,1
 }
 
 void loop() {
     // send data on channel b
-    ExtSerialB->write(0x55);
+    ExtSerialB.write(0x55);
 
-    if (ExtSerialA->available() > 0) {
-        if (ExtSerialA->read() != 0x55)
+    if (ExtSerialA.available() > 0) {
+        if (ExtSerialA.read() != 0x55)
             Serial.println("Error receiving loopback data");
         else
             Serial.println("Loopback data received");

@@ -21,9 +21,9 @@
 
 int8_t powerPin = -1;
 
-// Create the port expander object and an empty pointer for the serial interface
+// Create the port expander object and channel A serial interface reference
 SC16IS752       ExtPort;
-SC16IS7xx_UART* ExtSerial = nullptr;
+SC16IS7xx_UART& ExtSerial = ExtPort.uartA();
 
 void setup() {
     // power the chip if necessary
@@ -46,18 +46,12 @@ void setup() {
     }
     Serial.println("found!");
 
-    ExtSerial = ExtPort.uartA();
-    if (!ExtSerial) {
-        Serial.println("failed to create UART channel A");
-        while (true) delay(100);
-    }
-
-    ExtSerial->enableFIFO(true);  // enable fifo
-    ExtSerial->setBaudrate(115200);
-    ExtSerial->setLine(8, 0, 1);  // 8,n,1
+    ExtSerial.enableFIFO(true);  // enable fifo
+    ExtSerial.setBaudrate(115200);
+    ExtSerial.setLine(8, 0, 1);  // 8,n,1
 }
 
 void loop() {
-    if (ExtSerial->available() > 0) { Serial.print((char)ExtSerial->read()); }
+    if (ExtSerial.available() > 0) { Serial.print((char)ExtSerial.read()); }
     delay(100);
 }

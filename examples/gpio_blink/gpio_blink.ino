@@ -15,9 +15,9 @@
 // used.
 int8_t powerPin = -1;
 
-// Create the port expander object and an empty pointer for the serial interface
+// Create the port expander object and channel A serial interface reference
 SC16IS752       ExtPort;
-SC16IS7xx_UART* ExtSerial = nullptr;
+SC16IS7xx_UART& ExtSerial = ExtPort.uartA();
 
 // The GPIO pin on the SC16IS7XX to use for the blink test
 #define GPIO_PIN 0
@@ -42,12 +42,6 @@ void setup() {
         while (true) delay(100);
     }
     Serial.println("found!");
-
-    ExtSerial = ExtPort.uartA();
-    if (!ExtSerial) {
-        Serial.println("failed to create UART channel A");
-        while (true) delay(100);
-    }
 
     // set the pin mode
     // NOTE: For everything except the ESP32 , you could simply use

@@ -445,18 +445,18 @@ class SC16IS7xx {
 
     /**
      * @brief Get channel A UART interface.
-     * @return Pointer to channel A interface.
+     * @return Reference to channel A interface.
      */
-    SC16IS7xx_UART* uartA() {
-        return getUART(SC16IS7XX_CHANNEL_A);
+    SC16IS7xx_UART& uartA() {
+        return _uartStorage[SC16IS7XX_CHANNEL_A];
     }
 
     /**
      * @brief Get channel B UART interface.
-     * @return Pointer to channel B interface.
+     * @return Reference to channel B interface.
      */
-    SC16IS7xx_UART* uartB() {
-        return getUART(SC16IS7XX_CHANNEL_B);
+    SC16IS7xx_UART& uartB() {
+        return _uartStorage[SC16IS7XX_CHANNEL_B];
     }
 
     // i2c
