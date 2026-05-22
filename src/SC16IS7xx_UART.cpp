@@ -978,9 +978,10 @@ int SC16IS7xx_UART::read(uint8_t* buf, size_t size) {
         SC16IS7XX_DEBUG_SERIAL.print("==Appending peeked byte: ");
         SC16IS7XX_DEBUG_SERIAL.println(static_cast<char>(_peek_buf));
 #endif  // SC16IS7XX_DEBUG_SERIAL
-        _peek_flag = 0;
-        *buf       = _peek_buf;
-        return rawRead(buf + 1, size - 1) + 1;
+        _peek_flag          = 0;
+        *buf                = _peek_buf;
+        int additionalBytes = rawRead(buf + 1, size - 1);
+        return 1 + (additionalBytes > 0 ? additionalBytes : 0);
     }
     // otherwise, read from the FIFO as normal
     return rawRead(buf, size);
