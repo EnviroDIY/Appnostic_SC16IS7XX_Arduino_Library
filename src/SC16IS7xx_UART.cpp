@@ -1021,12 +1021,11 @@ int SC16IS7xx_UART::peek() {
 size_t SC16IS7xx_UART::write(const uint8_t* buf, size_t size) {
     if (size == 0) return 0;
 
-    // Pointer to where in the buffer we're up to
-    // A const cast is need to cast-away the constant-ness of the buffer (ie,
-    // modify it).
-    uint8_t* txPtr      = const_cast<uint8_t*>(buf);
-    size_t   bytesSent  = 0;
-    uint32_t stallStart = 0;
+    // Pointer to where in the buffer we're up to.
+    const uint8_t* txPtr      = buf;
+    const uint8_t* txEnd      = buf + size;
+    size_t         bytesSent  = 0;
+    uint32_t       stallStart = 0;
 
     do {
         // check how much space is available in the TX FIFO
@@ -1049,14 +1048,12 @@ size_t SC16IS7xx_UART::write(const uint8_t* buf, size_t size) {
         // we don't read past the end of the buffer.
         size_t sendLength = space;
         // Ensure the program doesn't read past the allocated memory
-        if (txPtr + space > const_cast<uint8_t*>(buf) + size) {
-            sendLength = const_cast<uint8_t*>(buf) + size - txPtr;
-        }
+        if (txPtr + space > txEnd) { sendLength = txEnd - txPtr; }
         // write out the number of bytes for this chunk
         Adafruit_BusIO_Register THR(_owner->i2c_dev, _owner->spi_dev,
                                     SC16IS7XX_SPIREG,
                                     (SC16IS7XX_REG_THR << 3 | _channel << 1));
-        THR.write(txPtr, sendLength);
+        THR.write(const_cast<uint8_t*>(txPtr), sendLength);
         bytesSent += sendLength;  // bump up number of bytes sent
         txPtr += sendLength;      // bump up the pointer
     } while (bytesSent < size);
