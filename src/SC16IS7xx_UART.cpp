@@ -233,7 +233,7 @@ void SC16IS7xx_UART::setLine(uint8_t dataBits, uint8_t parity,
 
 #if defined(SC16IS7XX_DEBUG_SERIAL)
     SC16IS7XX_DEBUG_SERIAL.print("LCR Register:0x");
-    SC16IS7XX_DEBUG_SERIAL.println(tmp_lcr, DEC);
+    SC16IS7XX_DEBUG_SERIAL.println(tmp_lcr, HEX);
 #endif  // SC16IS7XX_DEBUG_SERIAL
 
     // data bit length
@@ -371,7 +371,8 @@ void SC16IS7xx_UART::enableModemInterrupt(bool enabled) {
     // control to enable modem interrupts.
     if (enabled) { enableFlowControl(true); }
     Adafruit_BusIO_Register     IER(_owner->i2c_dev, _owner->spi_dev,
-                                    SC16IS7XX_SPIREG, SC16IS7XX_REG_IER << 3);
+                                    SC16IS7XX_SPIREG,
+                                    (SC16IS7XX_REG_IER << 3 | _channel << 1));
     Adafruit_BusIO_RegisterBits modem(&IER, 1, SC16IS7XX_IER_MODEM);
     modem.write(enabled);
 }
@@ -386,7 +387,8 @@ void SC16IS7xx_UART::enableModemInterrupt(bool enabled) {
  */
 void SC16IS7xx_UART::enableCTSInterrupt(bool enabled) {
     Adafruit_BusIO_Register     IER(_owner->i2c_dev, _owner->spi_dev,
-                                    SC16IS7XX_SPIREG, SC16IS7XX_REG_IER << 3);
+                                    SC16IS7XX_SPIREG,
+                                    (SC16IS7XX_REG_IER << 3 | _channel << 1));
     Adafruit_BusIO_RegisterBits cts(&IER, 1, SC16IS7XX_IER_CTS);
     cts.write(enabled);
 }
@@ -401,7 +403,8 @@ void SC16IS7xx_UART::enableCTSInterrupt(bool enabled) {
  */
 void SC16IS7xx_UART::enableRTSInterrupt(bool enabled) {
     Adafruit_BusIO_Register     IER(_owner->i2c_dev, _owner->spi_dev,
-                                    SC16IS7XX_SPIREG, SC16IS7XX_REG_IER << 3);
+                                    SC16IS7XX_SPIREG,
+                                    (SC16IS7XX_REG_IER << 3 | _channel << 1));
     Adafruit_BusIO_RegisterBits rts(&IER, 1, SC16IS7XX_IER_RTS);
     rts.write(enabled);
 }
@@ -416,7 +419,8 @@ void SC16IS7xx_UART::enableRTSInterrupt(bool enabled) {
  */
 void SC16IS7xx_UART::enableXOFFInterrupt(bool enabled) {
     Adafruit_BusIO_Register     IER(_owner->i2c_dev, _owner->spi_dev,
-                                    SC16IS7XX_SPIREG, SC16IS7XX_REG_IER << 3);
+                                    SC16IS7XX_SPIREG,
+                                    (SC16IS7XX_REG_IER << 3 | _channel << 1));
     Adafruit_BusIO_RegisterBits xoff(&IER, 1, SC16IS7XX_IER_XOFF);
     xoff.write(enabled);
 }
@@ -432,7 +436,8 @@ void SC16IS7xx_UART::enableXOFFInterrupt(bool enabled) {
  */
 void SC16IS7xx_UART::enableRLSInterrupt(bool enabled) {
     Adafruit_BusIO_Register     IER(_owner->i2c_dev, _owner->spi_dev,
-                                    SC16IS7XX_SPIREG, SC16IS7XX_REG_IER << 3);
+                                    SC16IS7XX_SPIREG,
+                                    (SC16IS7XX_REG_IER << 3 | _channel << 1));
     Adafruit_BusIO_RegisterBits rls(&IER, 1, SC16IS7XX_IER_RLS);
     rls.write(enabled);
 }
@@ -454,7 +459,8 @@ void SC16IS7xx_UART::enableRLSInterrupt(bool enabled) {
  */
 void SC16IS7xx_UART::enableTHRInterrupt(bool enabled) {
     Adafruit_BusIO_Register     IER(_owner->i2c_dev, _owner->spi_dev,
-                                    SC16IS7XX_SPIREG, SC16IS7XX_REG_IER << 3);
+                                    SC16IS7XX_SPIREG,
+                                    (SC16IS7XX_REG_IER << 3 | _channel << 1));
     Adafruit_BusIO_RegisterBits thr(&IER, 1, SC16IS7XX_IER_THR);
     thr.write(enabled);
 }
@@ -475,7 +481,8 @@ void SC16IS7xx_UART::enableTHRInterrupt(bool enabled) {
  */
 void SC16IS7xx_UART::enableRHRInterrupt(bool enabled) {
     Adafruit_BusIO_Register     IER(_owner->i2c_dev, _owner->spi_dev,
-                                    SC16IS7XX_SPIREG, SC16IS7XX_REG_IER << 3);
+                                    SC16IS7XX_SPIREG,
+                                    (SC16IS7XX_REG_IER << 3 | _channel << 1));
     Adafruit_BusIO_RegisterBits rhr(&IER, 1, SC16IS7XX_IER_RHR);
     rhr.write(enabled);
 }
