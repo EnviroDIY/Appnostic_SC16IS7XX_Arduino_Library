@@ -345,11 +345,17 @@
  * @name Default Values
  */
 /**@{*/
+#ifndef SC16IS7XX_DEFAULT_ADDRESS
 #define SC16IS7XX_DEFAULT_ADDRESS \
-    (SC16IS7XX_ADDRESS_BB)                     ///< The default I2C address
-#define SC16IS7XX_DEFAULT_SPIFREQ (1000000UL)  ///< The default SPI Clock speed
+    (SC16IS7XX_ADDRESS_AA)  ///< The default I2C address
+#endif
+#ifndef SC16IS7XX_DEFAULT_XTAL_FREQ
 #define SC16IS7XX_DEFAULT_XTAL_FREQ \
     (14745600UL)  ///< The default frequency of the crystal in hertz
+#endif
+#ifndef SC16IS7XX_DEFAULT_SPIFREQ
+#define SC16IS7XX_DEFAULT_SPIFREQ (1000000UL)  ///< The default SPI Clock speed
+#endif
 /**@}*/
 
 /// @brief  Function pointer type for interrupt callbacks
