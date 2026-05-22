@@ -64,7 +64,9 @@
 #define SC16IS7XX_SPIREG ADDRBIT8_HIGH_TOREAD  ///< SPI register type
 /**@}*/
 
+/// The maximum number of UART channels on any device in the SC16IS7XX family.
 #define SC16IS7XX_MAX_UART_CHANNELS (2)
+/// The maximum number of GPIO pins on any device in the SC16IS7XX family.
 #define SC16IS7XX_MAX_GPIO_PINS (8)
 
 /**
@@ -478,9 +480,17 @@ class SC16IS7xx {
     void setGPIOPullDirection(bool pullUp);
     bool getGPIOPullDirection();
 
+    /**
+     * @brief Get the number of UART channels available on this device.
+     * @return Number of UART channels.
+     */
     uint8_t getUARTChannelCount() const {
         return _uartChannelCount;
     }
+    /**
+     * @brief Get the number of GPIO pins available on this device.
+     * @return Number of GPIO pins.
+     */
     uint8_t getGPIOPinCount() const {
         return _gpioPinCount;
     }
@@ -546,8 +556,10 @@ class SC16IS7xx {
  */
 template <uint8_t UartChannels, uint8_t GpioPins>
 struct SC16IS7xxChipTraits {
+    /// @brief Number of UART channels on the chip variant.
     static constexpr uint8_t UART_CHANNELS = UartChannels;
-    static constexpr uint8_t GPIO_PINS     = GpioPins;
+    /// @brief Number of GPIO pins on the chip variant.
+    static constexpr uint8_t GPIO_PINS = GpioPins;
 };
 
 /// @brief Traits for the SC16IS740 chip variant.

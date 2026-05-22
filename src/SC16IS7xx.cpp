@@ -13,6 +13,12 @@
 // Pointer to active SC16IS7xx object
 SC16IS7xx* SC16IS7xx::_activeObject = nullptr;
 
+/**
+ * @brief Construct a new SC16IS7xx::SC16IS7xx object
+ *
+ * @param uartChannelCount Number of UART channels on the device.
+ * @param gpioPinCount Number of GPIO pins on the device.
+ */
 SC16IS7xx::SC16IS7xx(uint8_t uartChannelCount, uint8_t gpioPinCount)
     : _uartChannelCount(uartChannelCount > SC16IS7XX_MAX_UART_CHANNELS
                             ? SC16IS7XX_MAX_UART_CHANNELS
@@ -27,6 +33,11 @@ SC16IS7xx::SC16IS7xx(uint8_t uartChannelCount, uint8_t gpioPinCount)
     }
 }
 
+/**
+ * @brief Destroy the SC16IS7xx::SC16IS7xx object, setting the pointers to the
+ * I2C and SPI devices to nullptr and deleting them if they exist. Also clears
+ * the active object pointer if it points to this instance.
+ */
 SC16IS7xx::~SC16IS7xx() {
     if (i2c_dev) {
         delete i2c_dev;
